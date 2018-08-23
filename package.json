@@ -28,7 +28,8 @@
     "docker": "docker-compose up --force-recreate &",
     "docker:kill": "docker-compose kill",
     "pretest": "npm run docker:kill && npm run docker",
-    "test": "wait-on --timeout 20000 tcp:11211 tcp:11212 tcp:11213 && mocha --opts mocha.opts"
+    "test": "wait-on --timeout 20000 tcp:11211 tcp:11212 tcp:11213 && mocha --opts mocha.opts",
+    "posttest": "npm run docker:kill"
   },
   "license": "MIT",
   "repository": {
