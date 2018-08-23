@@ -1,14 +1,12 @@
 {
   "name": "@creditkarma/memcached",
-  "version": "0.0.1",
-  "author": "Arnout Kazemier",
+  "version": "1.0.0",
+  "author": "Credit Karma",
   "description": "A fully featured Memcached API client, supporting both single and clustered Memcached servers through consistent hashing and failover/failure. Memcached is rewrite of nMemcached, which will be deprecated in the near future.",
-  "main": "index.js",
-  "types": "index.d.ts",
+  "main": "dist/main/index.js",
+  "types": "dist/main/index.d.ts",
   "files": [
-    "index.js",
-    "index.d.ts",
-    "lib"
+    "dist/main"
   ],
   "keywords": [
     "InnoDB memcached API",
@@ -24,27 +22,35 @@
     "nosql"
   ],
   "scripts": {
-    "clean-all": "rimraf node_modules/ package-lock.json",
+    "clean": "rimraf dist",
+    "clean-all": "rimraf dist node_modules package-lock.json",
+    "lint": "tslint --fix './src/**/*.ts'",
+    "prebuild": "npm run clean",
+    "build": "npm run lint && tsc",
     "docker": "docker-compose up --force-recreate &",
     "docker:kill": "docker-compose kill",
-    "pretest": "npm run docker:kill && npm run docker",
+    "pretest": "npm run docker:kill && npm run docker && npm run build",
     "test": "wait-on --timeout 20000 tcp:11211 tcp:11212 tcp:11213 && mocha --opts mocha.opts",
     "posttest": "npm run docker:kill"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "http://github.com/3rd-Eden/node-memcached.git"
+    "url": "http://github.com/creditkarma/memcached.git"
   },
   "dependencies": {
     "hashring": "^3.2.0",
-    "jackpot": ">=0.0.6"
+    "jackpot": "^0.0.6"
   },
   "devDependencies": {
+    "@types/mocha": "^5.2.5",
+    "@types/node": "^8.0.51",
+    "@types/chai": "^4.1.4",
     "mocha": "^5.2.0",
+    "chai": "^4.1.2",
     "rimraf": "^2.6.2",
-    "should": "^13.2.3",
-    "pre-commit": "^1.2.2",
+    "tslint": "^5.11.0",
+    "typescript": "2.9.x",
     "wait-on": "^2.1.0"
   }
 }

@@ -243,7 +243,7 @@ Client.config = {
           ? memcached.servers[0]
           : memcached.HashRing.get(key);
 
-        if (map[server]){
+        if (map[server]) {
           map[server].push(key);
         } else {
           map[server] = [key];
