@@ -104,9 +104,9 @@ export class Memcached extends EventEmitter {
                     ['key', String],
                     ['lifetime', Number],
                     ['callback', Function],
-                    ],
+                ],
                 type: 'touch',
-                command: ['touch', fullkey, ttl].join(' '),
+                command: `touch ${fullkey} ${ttl}`,
             }
         })
     }
@@ -167,7 +167,7 @@ export class Memcached extends EventEmitter {
                     callback,
                     validate: [['key', String], ['callback', Function]],
                     type: 'get',
-                    command: 'get ' + fullkey,
+                    command: `get ${fullkey}`,
                 }
             })
         }
