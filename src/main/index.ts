@@ -1,2 +1,2 @@
-export { Memcached } from './Memcached'
+export { Memcached } from './memcached'
 export * from './types'
