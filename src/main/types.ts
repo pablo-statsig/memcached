@@ -18,8 +18,8 @@ export type Key = string | Array<string>
 export type ErrorValue =
     Error | Array<Error> | undefined | null
 
-export type CallbackFunction =
-    (err: ErrorValue, value: any) => void
+export type CallbackFunction<T = any> =
+    (err: ErrorValue, result: T) => void
 
 export type ParseResult =
     [ number, any ]
@@ -52,3 +52,6 @@ export interface IMemcachedConfig {
     defaultTTL: number
     failOverServers: Array<string>
 }
+
+export type MemcachedOptions =
+    Partial<IMemcachedConfig>

@@ -69,7 +69,7 @@ export class IssueLog extends EventEmitter {
     private totalReconnectsAttempted: number
     private totalReconnectsSuccess: number
 
-    private failuresResetId: number | null = null
+    private failuresResetId: NodeJS.Timer | null = null
 
     constructor(args: IIssueLogOptions) {
         super()
@@ -87,34 +87,38 @@ export class IssueLog extends EventEmitter {
     }
 
     public log(message: string): void {
-        const self = this
-
         this.failed = true
         this.messages.push(message || 'No message specified')
 
         // All failures must occur within `failuresTimeout` ms from the initial
         // failure in order for node to be disconnected or removed.
-        if (this.config.failures && this.config.failures === this.config.failures) {
-            this.failuresResetId = setTimeout(self.failuresReset.bind(self), this.config.failuresTimeout)
+        if (this.config.failures && this.config.failures === JSON.parse(this.args).failures) {
+            this.failuresResetId = setTimeout(() => {
+                this.failuresReset()
+            }, this.config.failuresTimeout)
         }
 
         if (this.config.failures && !this.locked) {
             this.locked = true
-            setTimeout(self.attemptRetry.bind(self), this.config.retry)
+            setTimeout(() => {
+                this.attemptRetry()
+            }, this.config.retry)
             this.emit('issue', this.details)
-        }
 
-        if (this.failuresResetId) {
-            clearTimeout(this.failuresResetId)
-        }
+        } else {
+            if (this.failuresResetId) {
+                clearTimeout(this.failuresResetId)
+            }
 
-        if (this.config.remove) {
-            this.emit('remove', this.details)
-        }
+            if (this.config.remove) {
+                this.emit('remove', this.details)
 
-        if (!this.isScheduledToReconnect) {
-            this.isScheduledToReconnect = true
-            setTimeout(self.attemptReconnect.bind(self), this.config.reconnect)
+            } else if (!this.isScheduledToReconnect) {
+                this.isScheduledToReconnect = true
+                setTimeout(() => {
+                    this.attemptReconnect()
+                }, this.config.reconnect)
+            }
         }
     }
 

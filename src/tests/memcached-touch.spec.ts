@@ -8,11 +8,11 @@ import * as common from './common'
  * Expresso test suite for all `touch` related
  * memcached commands
  */
-describe('Memcached TOUCH', function() {
+describe('Memcached TOUCH', () => {
     /**
      * Make sure that touching a key with 1 sec lifetime and getting it 1.1 sec after invoke deletion
      */
-    it('changes lifetime', function(done) {
+    it('changes lifetime', (done) => {
         const memcached = new Memcached(common.servers.single)
         const message = common.alphabet(256)
         const testnr = ++(global as any).testnumbers

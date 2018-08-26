@@ -1,4 +1,9 @@
-import { CallbackFunction, Key } from './types'
+import {
+    CallbackFunction,
+    Key,
+    MemcachedOptions,
+} from './types'
+
 import * as Utils from './utils'
 
 export type NativeConstructor =
@@ -13,13 +18,15 @@ export type ValidationItems =
 
 export type CommandType =
     'touch' | 'get' | 'gets' | 'delete' | 'stats cachedump' |
-    'set' | 'replace' | 'add' | 'cas' | 'append' | 'prepend'
+    'set' | 'replace' | 'add' | 'cas' | 'append' | 'prepend' |
+    'incr' | 'decr'
 
 export type CommandCompiler =
-    (noreply?: boolean) => Partial<IMemcachedCommand>
+    (noreply?: boolean) => CommandOptions
 
 export interface IMemcachedCommand {
     key: Key
+    value: any
     callback: CallbackFunction
     lifetime: number
     validate: ValidationItems
@@ -34,6 +41,7 @@ export interface IMemcachedCommand {
 
 export const DEFAULT_COMMAND: IMemcachedCommand = {
     key: '',
+    value: null,
     callback: (err: Error, data: any): void => {},
     lifetime: 0,
     validate: [],
@@ -46,6 +54,9 @@ export const DEFAULT_COMMAND: IMemcachedCommand = {
     execution: 0,
 }
 
-export function makeCommand(options: Partial<IMemcachedCommand>): IMemcachedCommand {
+export type CommandOptions =
+    Partial<IMemcachedCommand>
+
+export function makeCommand(options: CommandOptions): IMemcachedCommand {
     return Utils.merge(DEFAULT_COMMAND, options)
 }

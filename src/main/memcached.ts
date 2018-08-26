@@ -3,7 +3,14 @@ import HashRing = require('hashring')
 import Jackpot = require('jackpot')
 import { Socket } from 'net'
 
-import { CommandCompiler, CommandType, IMemcachedCommand, makeCommand, ValidationItems } from './commands'
+import {
+    CommandCompiler,
+    CommandOptions,
+    CommandType,
+    IMemcachedCommand,
+    makeCommand,
+    ValidationItems,
+} from './commands'
 import {
     BUFFER,
     CONTINUE,
@@ -22,6 +29,7 @@ import {
     CallbackFunction,
     ErrorValue,
     IMemcachedConfig,
+    MemcachedOptions,
     ParseResult,
     Servers,
 } from './types'
@@ -95,20 +103,18 @@ export class Memcached extends EventEmitter {
 
     public touch(key: string, ttl: number, callback: CallbackFunction): void {
         const fullkey = `${this.config.namespace}${key}`
-        this.executeCommand(() => {
-            return {
-                key: fullkey,
-                callback,
-                lifetime: ttl,
-                validate: [
-                    ['key', String],
-                    ['lifetime', Number],
-                    ['callback', Function],
-                ],
-                type: 'touch',
-                command: `touch ${fullkey} ${ttl}`,
-            }
-        })
+        this.executeCommand((): CommandOptions => ({
+            key: fullkey,
+            callback,
+            lifetime: ttl,
+            validate: [
+                ['key', String],
+                ['lifetime', Number],
+                ['callback', Function],
+            ],
+            type: 'touch',
+            command: `touch ${fullkey} ${ttl}`,
+        }))
     }
 
     public set(key: string, value: any, callback: CallbackFunction): void
@@ -155,22 +161,83 @@ export class Memcached extends EventEmitter {
         )
     }
 
-    public get<T>(key: string | Array<string>, callback: CallbackFunction): void {
+    // check and set
+    public cas(key: string, value: any, cas: string, callback: CallbackFunction): void
+    public cas(key: string, value: any, cas: string, ttl: number, callback: CallbackFunction): void
+    public cas(...args: Array<any>): void {
+        const key: string = args[0]
+        const value: any = args[1]
+        const cas: string = args[2]
+        let ttl: number = this.config.defaultTTL
+        let callback: CallbackFunction = args[3]
+
+        if (typeof args[3] === 'number') {
+            ttl = args[3]
+            callback = args[4]
+        }
+
+        this.setters(
+            'cas',
+            key,
+            value,
+            ttl,
+            callback,
+            cas,
+        )
+    }
+
+    public del(key: string, callback: CallbackFunction): void {
+        const fullkey = `${this.config.namespace}${key}`
+        this.executeCommand((noreply) => ({
+              key: fullkey,
+              callback,
+              validate: [
+                  ['key', String],
+                  ['callback', Function],
+              ],
+              type: 'delete',
+              redundancyEnabled: true,
+              command: 'delete ' + fullkey + (noreply ? NOREPLY : ''),
+        }))
+    }
+
+    public delete(key: string, callback: CallbackFunction): void {
+        this.del(key, callback)
+    }
+
+    public get<T = any>(key: string | Array<string>, callback: CallbackFunction<T>): void {
         if (Array.isArray(key)) {
             this.getMulti(key, callback)
 
         } else {
-            const fullkey = this.config.namespace + key
-            this.executeCommand((noreply: boolean): Partial<IMemcachedCommand> => {
-                return {
-                    key: fullkey,
-                    callback,
-                    validate: [['key', String], ['callback', Function]],
-                    type: 'get',
-                    command: `get ${fullkey}`,
-                }
-            })
+            const fullkey = `${this.config.namespace}${key}`
+            this.executeCommand((noreply: boolean): CommandOptions => ({
+                key: fullkey,
+                callback,
+                validate: [
+                    ['key', String],
+                    ['callback', Function],
+                ],
+                type: 'get',
+                command: `get ${fullkey}`,
+            }))
         }
+    }
+
+    // the difference between get and gets is that gets, also returns a cas value
+    // and gets doesn't support multi-gets at this moment.
+    public gets(key: string, callback: CallbackFunction): void {
+        const fullkey = `${this.config.namespace}${key}`
+        this.executeCommand((noreply: boolean): CommandOptions => ({
+            key: fullkey,
+            callback,
+            validate: [
+                ['key', String],
+                ['callback', Function],
+            ],
+            type: 'gets',
+            command: `gets ${fullkey}`,
+        }))
     }
 
     // Handles get's with multiple keys
@@ -179,11 +246,9 @@ export class Memcached extends EventEmitter {
         let calls: number = 0
         let responses: any = {}
 
-        if (this.config.namespace.length) {
-            keys = keys.map((key: string): string => {
-                return `${this.config.namespace} ${key}`
-            })
-        }
+        keys = keys.map((key: string): string => {
+            return `${this.config.namespace}${key}`
+        })
 
         // handle multiple responses and cache them untill we receive all.
         const handle: CallbackFunction = (err: Error, results: any) => {
@@ -214,20 +279,52 @@ export class Memcached extends EventEmitter {
                 calls = totals
             }
 
-            this.executeCommand((noreply: boolean): Partial<IMemcachedCommand> => {
-                return {
-                    callback: handle,
-                    multi: true,
-                    type: 'get',
-                    command: `get ${key.join(' ')}`,
-                    key: keys,
-                    validate: [
-                        ['key', Array],
-                        ['callback', Function],
-                    ],
-                }
-            }, server)
+            this.executeCommand((noreply: boolean): CommandOptions => ({
+                callback: handle,
+                multi: true,
+                type: 'get',
+                command: `get ${key.join(' ')}`,
+                key: keys,
+                validate: [
+                    ['key', Array],
+                    ['callback', Function],
+                ],
+            }), server)
         })
+    }
+
+    public incr(key: string, value: number, callback: CallbackFunction): void {
+        this.incrdecr('incr', key, value, callback)
+    }
+
+    public increment(key: string, value: number, callback: CallbackFunction): void {
+        this.incr(key, value, callback)
+    }
+
+    public decr(key: string, value: number, callback: CallbackFunction): void {
+        this.incrdecr('decr', key, value, callback)
+    }
+
+    public decrement(key: string, value: number, callback: CallbackFunction): void {
+        this.decr(key, value, callback)
+    }
+
+    private incrdecr(type: 'incr' | 'decr', key: string, value: number, callback: CallbackFunction) {
+        const fullkey = `${this.config.namespace}${key}`
+        this.executeCommand((noreply) => ({
+            key: fullkey,
+            callback,
+            value,
+            validate: [
+                ['key', String],
+                ['value', Number],
+                ['callback', Function],
+            ],
+            type,
+            redundancyEnabled: true,
+            command: [type, fullkey, value].join(' ') +
+                (noreply ? NOREPLY : ''),
+        }))
     }
 
     // As all command nearly use the same syntax we are going to proxy them all to
@@ -271,27 +368,25 @@ export class Memcached extends EventEmitter {
             )
 
         } else {
-            this.executeCommand((noreply) => {
-                return {
-                    key: fullKey,
-                    callback,
-                    lifetime,
-                    value,
-                    cas,
-                    validate: [
-                        ['key', String],
-                        ['value', String],
-                        ['lifetime', Number],
-                        ['callback', Function],
-                    ],
-                    type,
-                    redundancyEnabled: false,
-                    command: [type, fullKey, flag, lifetime, length].join(' ') +
-                        (cas ? ` ${cas}` : '') +
-                        (noreply ? NOREPLY : '') +
-                        LINEBREAK + value,
-                }
-            })
+            this.executeCommand((noreply): CommandOptions => ({
+                key: fullKey,
+                callback,
+                lifetime,
+                value,
+                cas,
+                validate: [
+                    ['key', String],
+                    ['value', String],
+                    ['lifetime', Number],
+                    ['callback', Function],
+                ],
+                type,
+                redundancyEnabled: false,
+                command: [type, fullKey, flag, lifetime, length].join(' ') +
+                    (cas ? ` ${cas}` : '') +
+                    (noreply ? NOREPLY : '') +
+                    LINEBREAK + value,
+            }))
         }
     }
 
@@ -345,6 +440,18 @@ export class Memcached extends EventEmitter {
         }
     }
 
+    private failedServers(): Array<string> {
+        const result: Array<string> = []
+
+        for (const server in this.issues) {
+            if (this.issues[server].failed) {
+                result.push(server)
+            }
+        }
+
+        return result
+    }
+
     private executeCommand(compiler: CommandCompiler, server?: string): void {
         this.activeQueries += 1
         const command: IMemcachedCommand = makeCommand(compiler())
@@ -359,7 +466,6 @@ export class Memcached extends EventEmitter {
             // generate a regular query,
             const redundancy = this.config.redundancy < this.servers.length
             const queryRedundancy = command.redundancyEnabled
-            // const self = this
             let redundants: Array<string> = []
 
             if (redundancy && queryRedundancy) {
@@ -372,6 +478,7 @@ export class Memcached extends EventEmitter {
                 // us
                 if (this.servers.length === 1) {
                     server = this.servers[0]
+
                 } else {
                     if (redundancy && queryRedundancy) {
                         server = redundants.shift()
@@ -387,7 +494,8 @@ export class Memcached extends EventEmitter {
             // to any server.
             if (server === undefined || (server in this.issues && this.issues[server].failed)) {
                 if (command.callback) {
-                    this.makeCallback(command.callback, new Error(`Server at ${server} not available`))
+                    const failedServers: string = this.failedServers().join()
+                    this.makeCallback(command.callback, new Error(`Server at ${failedServers} not available`))
                 }
 
             } else if (server !== undefined) {
@@ -416,7 +524,9 @@ export class Memcached extends EventEmitter {
                         // Other errors besides inability to connect to server
                         if (error) {
                             this.connectionIssue(error.toString(), socket)
-                            return command.callback && this.makeCallback(command.callback, error)
+                            if (command.callback) {
+                                this.makeCallback(command.callback, error)
+                            }
 
                         } else if (!socket.writable) {
                             error = new Error(`Unable to write to socket[${socket.serverAddress}]`)
@@ -506,12 +616,13 @@ export class Memcached extends EventEmitter {
     private connect(server: string, callback: ConnectionCallback): void {
         // Default port to 11211
         if (!server.match(/(.+):(\d+)$/)) {
-            server = server + ':11211'
+            server = `${server}:11211`
         }
 
         // server is dead, bail out
         if (server in this.issues && this.issues[server].failed) {
             return callback()
+
         } else {
             // fetch from connection pool
             if (server in this.connections) {
@@ -600,7 +711,7 @@ export class Memcached extends EventEmitter {
         }
     }
 
-    private buffer(socket: MemcachedSocket, buffer: Buffer) {
+    private buffer(socket: MemcachedSocket, buffer: Buffer): void {
         socket.responseBuffer += buffer
 
         // only call transform the data once we are sure, 100% sure, that we valid
@@ -638,9 +749,7 @@ export class Memcached extends EventEmitter {
             let dataSet: string | undefined = ''
             let resultSet: any
 
-            const tokenType: string = tokenSet[0]
-
-            if (/^\d+$/.test(tokenType)) {
+            if (/^\d+$/.test(tokenSet[0])) {
                 // special case for "config get cluster"
                 // Amazon-specific memcached configuration information, see aws
                 // documentation regarding adding auto-discovery to your client library.
@@ -649,16 +758,20 @@ export class Memcached extends EventEmitter {
                 //   hostname|ip-address|port hostname|ip-address|port hostname|ip-address|port\n\r\n
                 if (/(([-.a-zA-Z0-9]+)\|(\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b)\|(\d+))/.test(socket.bufferArray[0])) {
                     tokenSet.unshift('CONFIG')
+
                 } else {
                     tokenSet.unshift('INCRDECR')
                 }
             }
+
+            const tokenType: string = tokenSet[0]
 
             // special case for value, it's required that it has a second response!
             // add the token back, and wait for the next response, we might be
             // handling a big ass response here.
             if (tokenType === 'VALUE' && socket.bufferArray.indexOf('END') === -1) {
                 socket.bufferArray.unshift(token)
+                return
 
             } else {
                 // check for dedicated parser

@@ -8,11 +8,11 @@ import * as common from './common'
  * Expresso test suite for all `add` related
  * memcached commands
  */
-describe('Memcached ADD', function() {
+describe('Memcached ADD', () => {
     /**
      * Make sure that adding a key which already exists returns an error.
      */
-    it('fail to add an already existing key', function(done) {
+    it('fail to add an already existing key', (done) => {
         const memcached = new Memcached(common.servers.single)
         const message = common.alphabet(256)
         const testnr = ++(global as any).testnumbers
