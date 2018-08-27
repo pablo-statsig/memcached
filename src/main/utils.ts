@@ -140,33 +140,6 @@ export function merge(...objs: Array<any>): any {
     return target
 }
 
-// curry/bind functions
-export function curry(context: any, fn: (...args: Array<any>) => any, ...args: Array<any>) {
-    return function bowlofcurry(...moreArgs: Array<any>) {
-        return fn.apply(context || null, args.concat(moreArgs))
-    }
-}
-
-// a small items iterator
-// export function iterator(collection, callback) {
-//     const arr = Array.isArray(collection)
-//     const keys: Array<string> = !arr ? Object.keys(collection) : []
-//     let index = 0
-//     const maximum = arr ? collection.length : keys.length
-//     const self = this
-
-//     // returns next item
-//     this.next = () => {
-//         const obj = arr ? collection[index] : { key: keys[index], value: collection[keys[index]] }
-//         callback(obj, index++, collection, self)
-//     }
-
-//     // check if we have more items
-//     this.hasNext = function hasNext() {
-//         return index < maximum
-//     }
-// }
-
 // Escapes values by putting backslashes before line breaks
 export function escapeValue(value: string): string {
     return value.replace(/(\r|\n)/g, '\\$1')
