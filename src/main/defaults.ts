@@ -28,6 +28,6 @@ export const DEFAULT_CONFIG: IMemcachedConfig = {
     namespace: '',           // sentinel to prepend to all memcache keys for namespacing the entries
     debug: false,            // Output the commands and responses
 
-    defaultTTL: 30000,
+    defaultTTL: 600,
     failOverServers: [],
 }

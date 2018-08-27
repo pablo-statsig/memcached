@@ -77,15 +77,18 @@ type ConnectionCallback =
     (error?: ErrorValue, socket?: MemcachedSocket) => void
 
 export class Memcached extends EventEmitter {
+    public static config: IMemcachedConfig = DEFAULT_CONFIG
+
     private config: IMemcachedConfig
     private hashRing: HashRing
     private activeQueries: number
     private servers: Array<string>
     private issues: IIssueMap
     private connections: IConnectionMap
+
     constructor(servers: Servers, options: Partial<IMemcachedConfig> = {}) {
         super()
-        this.config = Utils.merge(DEFAULT_CONFIG, options)
+        this.config = Utils.merge(Memcached.config, options)
         this.hashRing = new HashRing(servers)
         this.activeQueries = 0
         this.servers = []
