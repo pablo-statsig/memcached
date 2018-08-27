@@ -79,25 +79,25 @@ describe('Memcached connections', () => {
         // First request will schedule a retry attempt, and lock scheduling
         memcached.get('idontcare', (err1) => {
             assert.throws(() => { throw err1 }, /connect ECONNREFUSED/)
-            assert.equal((memcached as any).issues[server].config.failures, 5)
-            assert.equal((memcached as any).issues[server].locked, true)
-            assert.equal((memcached as any).issues[server].failed, true)
+            assert.equal((memcached as any)._issues[server].config.failures, 5)
+            assert.equal((memcached as any)._issues[server].locked, true)
+            assert.equal((memcached as any)._issues[server].failed, true)
 
             // Immediate request should not decrement failures
             memcached.get('idontcare', (err2) => {
                 assert.throws(() => { throw err2 }, /not available/)
-                assert.equal((memcached as any).issues[server].config.failures, 5)
-                assert.equal((memcached as any).issues[server].locked, true)
-                assert.equal((memcached as any).issues[server].failed, true)
+                assert.equal((memcached as any)._issues[server].config.failures, 5)
+                assert.equal((memcached as any)._issues[server].locked, true)
+                assert.equal((memcached as any)._issues[server].failed, true)
                 // Once `retry` time has passed, failures should decrement by one
                 setTimeout(() => {
                     // Server should be back in action
-                    assert.equal((memcached as any).issues[server].locked, false)
-                    assert.equal((memcached as any).issues[server].failed, false)
+                    assert.equal((memcached as any)._issues[server].locked, false)
+                    assert.equal((memcached as any)._issues[server].failed, false)
                     memcached.get('idontcare', (err3) => {
                         // Server should be marked healthy again, though we'll get this error
                         assert.throws(() => { throw err3 }, /connect ECONNREFUSED/)
-                        assert.equal((memcached as any).issues[server].config.failures, 4)
+                        assert.equal((memcached as any)._issues[server].config.failures, 4)
                         memcached.end()
                         done()
                     })
@@ -185,7 +185,7 @@ describe('Memcached connections', () => {
 
         memcached.get('idontcare', (err) => {
             assert.notExists(err)
-            assert.equal(Object.keys((memcached as any).connections)[0], '127.0.0.1:11211')
+            assert.equal(Object.keys((memcached as any)._connections)[0], '127.0.0.1:11211')
             memcached.end()
             done()
         })
@@ -199,11 +199,11 @@ describe('Memcached connections', () => {
 
         memcached.get('idontcare', (err1) => {
             assert.notExists(err1)
-            conn = (memcached as any).connections['127.0.0.1:11211']
+            conn = (memcached as any)._connections['127.0.0.1:11211']
 
             memcached.get('idontcare', (err2) => {
                 assert.notExists(err2)
-                assert.equal((memcached as any).connections['127.0.0.1:11211'], conn)
+                assert.equal((memcached as any)._connections['127.0.0.1:11211'], conn)
                 memcached.end()
                 done()
             })
@@ -236,10 +236,10 @@ describe('Memcached connections', () => {
         })
 
         memcached.get('idontcare', (err) => {
-            assert.equal((memcached as any).connections[common.servers.single].pool.length, 1)
+            assert.equal((memcached as any)._connections[common.servers.single].pool.length, 1)
 
             setTimeout(() => {
-                assert.equal((memcached as any).connections[common.servers.single].pool.length, 0)
+                assert.equal((memcached as any)._connections[common.servers.single].pool.length, 0)
                 memcached.end()
                 done()
             }, 110)
@@ -259,7 +259,7 @@ describe('Memcached connections', () => {
         memcached.get('idontcare', (err1) => {
             assert.notExists(err1)
             // Fake an error on the connected socket which should mark server failed
-            const socket = (memcached as any).connections[common.servers.single].pool.pop()
+            const socket = (memcached as any)._connections[common.servers.single].pool.pop()
             socket.emit('error', new Error('Dummy error'))
 
             memcached.get('idontcare', (err2) => {
@@ -285,12 +285,12 @@ describe('Memcached connections', () => {
 
             // Allow `retry` ms to pass, which will decrement failures
             setTimeout(() => {
-                assert.deepEqual((memcached as any).issues[server].config.failures, 1)
+                assert.deepEqual((memcached as any)._issues[server].config.failures, 1)
                 // Allow failuresTimeout ms to pass, which should reset failures
                 setTimeout(() => {
                     assert.deepEqual(
-                        JSON.parse((memcached as any).issues[server].args).failures,
-                        (memcached as any).issues[server].config.failures,
+                        JSON.parse((memcached as any)._issues[server].args).failures,
+                        (memcached as any)._issues[server].config.failures,
                     )
                     memcached.end()
                     done()

@@ -79,34 +79,32 @@ type ConnectionCallback =
 export class Memcached extends EventEmitter {
     public static config: IMemcachedConfig = DEFAULT_CONFIG
 
-    private config: IMemcachedConfig
-    private hashRing: HashRing
-    private activeQueries: number
-    private servers: Array<string>
-    private issues: IIssueMap
-    private connections: IConnectionMap
+    private _config: IMemcachedConfig
+    private _hashRing: HashRing
+    private _activeQueries: number
+    private _servers: Array<string>
+    private _issues: IIssueMap
+    private _connections: IConnectionMap
 
     constructor(servers: Servers, options: Partial<IMemcachedConfig> = {}) {
         super()
-        this.config = Utils.merge(Memcached.config, options)
-        this.hashRing = new HashRing(servers)
-        this.activeQueries = 0
-        this.servers = []
-        this.issues = {}
-        this.connections = {}
+        this._config = Utils.merge(Memcached.config, options)
+        this._hashRing = new HashRing(servers)
+        this._activeQueries = 0
+        this._servers = []
+        this._issues = {}
+        this._connections = {}
     }
 
     public end(): void {
-        const memcached = this
-
-        Object.keys(this.connections).forEach((key: string) => {
-            memcached.connections[key].end()
+        Object.keys(this._connections).forEach((key: string) => {
+            this._connections[key].end()
         })
     }
 
     public touch(key: string, ttl: number, callback: CallbackFunction): void {
-        const fullkey = `${this.config.namespace}${key}`
-        this.executeCommand((): CommandOptions => ({
+        const fullkey = `${this._config.namespace}${key}`
+        this._executeCommand((): CommandOptions => ({
             key: fullkey,
             callback,
             lifetime: ttl,
@@ -125,7 +123,7 @@ export class Memcached extends EventEmitter {
     public set(...args: Array<any>): void {
         const key: string = args[0]
         const value: any = args[1]
-        let ttl: number = this.config.defaultTTL
+        let ttl: number = this._config.defaultTTL
         let callback: CallbackFunction = args[2]
 
         if (typeof args[2] === 'number') {
@@ -133,7 +131,7 @@ export class Memcached extends EventEmitter {
             callback = args[3]
         }
 
-        this.setters(
+        this._setters(
             'set',
             key,
             value,
@@ -147,7 +145,7 @@ export class Memcached extends EventEmitter {
     public add(...args: Array<any>): void {
         const key: string = args[0]
         const value: any = args[1]
-        let ttl: number = this.config.defaultTTL
+        let ttl: number = this._config.defaultTTL
         let callback: CallbackFunction = args[2]
 
         if (typeof args[2] === 'number') {
@@ -155,7 +153,7 @@ export class Memcached extends EventEmitter {
             callback = args[3]
         }
 
-        this.setters(
+        this._setters(
             'add',
             key,
             value,
@@ -171,7 +169,7 @@ export class Memcached extends EventEmitter {
         const key: string = args[0]
         const value: any = args[1]
         const cas: string = args[2]
-        let ttl: number = this.config.defaultTTL
+        let ttl: number = this._config.defaultTTL
         let callback: CallbackFunction = args[3]
 
         if (typeof args[3] === 'number') {
@@ -179,7 +177,7 @@ export class Memcached extends EventEmitter {
             callback = args[4]
         }
 
-        this.setters(
+        this._setters(
             'cas',
             key,
             value,
@@ -190,8 +188,8 @@ export class Memcached extends EventEmitter {
     }
 
     public del(key: string, callback: CallbackFunction): void {
-        const fullkey = `${this.config.namespace}${key}`
-        this.executeCommand((noreply) => ({
+        const fullkey = `${this._config.namespace}${key}`
+        this._executeCommand((noreply) => ({
               key: fullkey,
               callback,
               validate: [
@@ -213,8 +211,8 @@ export class Memcached extends EventEmitter {
             this.getMulti(key, callback)
 
         } else {
-            const fullkey = `${this.config.namespace}${key}`
-            this.executeCommand((noreply: boolean): CommandOptions => ({
+            const fullkey = `${this._config.namespace}${key}`
+            this._executeCommand((noreply: boolean): CommandOptions => ({
                 key: fullkey,
                 callback,
                 validate: [
@@ -230,8 +228,8 @@ export class Memcached extends EventEmitter {
     // the difference between get and gets is that gets, also returns a cas value
     // and gets doesn't support multi-gets at this moment.
     public gets(key: string, callback: CallbackFunction): void {
-        const fullkey = `${this.config.namespace}${key}`
-        this.executeCommand((noreply: boolean): CommandOptions => ({
+        const fullkey = `${this._config.namespace}${key}`
+        this._executeCommand((noreply: boolean): CommandOptions => ({
             key: fullkey,
             callback,
             validate: [
@@ -250,7 +248,7 @@ export class Memcached extends EventEmitter {
         let responses: any = {}
 
         keys = keys.map((key: string): string => {
-            return `${this.config.namespace}${key}`
+            return `${this._config.namespace}${key}`
         })
 
         // handle multiple responses and cache them untill we receive all.
@@ -261,11 +259,11 @@ export class Memcached extends EventEmitter {
 
             // add all responses to the array
             (Array.isArray(results) ? results : [results]).forEach((value: any) => {
-                if (value && this.config.namespace.length) {
+                if (value && this._config.namespace.length) {
                     const nsKey: string = Object.keys(value)[0]
                     const newvalue: { [key: string]: any } = {}
 
-                    newvalue[nsKey.replace(this.config.namespace, '')] = value[nsKey]
+                    newvalue[nsKey.replace(this._config.namespace, '')] = value[nsKey]
                     responses = Utils.merge(responses, newvalue)
                 } else {
                     responses = Utils.merge(responses, value)
@@ -277,12 +275,12 @@ export class Memcached extends EventEmitter {
             }
         }
 
-        this.multi(keys, (server: string, key: Array<string>, index: number, totals: number): void => {
+        this._multi(keys, (server: string, key: Array<string>, index: number, totals: number): void => {
             if (calls === 0) {
                 calls = totals
             }
 
-            this.executeCommand((noreply: boolean): CommandOptions => ({
+            this._executeCommand((noreply: boolean): CommandOptions => ({
                 callback: handle,
                 multi: true,
                 type: 'get',
@@ -297,7 +295,7 @@ export class Memcached extends EventEmitter {
     }
 
     public incr(key: string, value: number, callback: CallbackFunction): void {
-        this.incrdecr('incr', key, value, callback)
+        this._incrdecr('incr', key, value, callback)
     }
 
     public increment(key: string, value: number, callback: CallbackFunction): void {
@@ -305,7 +303,7 @@ export class Memcached extends EventEmitter {
     }
 
     public decr(key: string, value: number, callback: CallbackFunction): void {
-        this.incrdecr('decr', key, value, callback)
+        this._incrdecr('decr', key, value, callback)
     }
 
     public decrement(key: string, value: number, callback: CallbackFunction): void {
@@ -315,7 +313,7 @@ export class Memcached extends EventEmitter {
     // You need to use the items dump to get the correct server and slab settings
     // see simple_cachedump.js for an example
     public cachedump(server: string, slabid: number, num: number, callback: CallbackFunction) {
-        this.executeCommand((noreply) => ({
+        this._executeCommand((noreply) => ({
             callback,
             number: num,
             slabid,
@@ -330,11 +328,11 @@ export class Memcached extends EventEmitter {
     }
 
     public version(callback: CallbackFunction): void {
-        this.singles('version', callback)
+        this._singles('version', callback)
     }
 
     public flush(callback: CallbackFunction): void {
-        this.singles('flush_all', callback)
+        this._singles('flush_all', callback)
     }
 
     public flushAll(callback: CallbackFunction): void {
@@ -342,11 +340,11 @@ export class Memcached extends EventEmitter {
     }
 
     public stats(callback: CallbackFunction): void {
-        this.singles('stats', callback)
+        this._singles('stats', callback)
     }
 
     public settings(callback: CallbackFunction): void {
-        this.singles('stats settings', callback)
+        this._singles('stats settings', callback)
     }
 
     public statsSettings(callback: CallbackFunction): void {
@@ -354,7 +352,7 @@ export class Memcached extends EventEmitter {
     }
 
     public slabs(callback: CallbackFunction): void {
-        this.singles('stats slabs', callback)
+        this._singles('stats slabs', callback)
     }
 
     public statsSlabs(callback: CallbackFunction): void {
@@ -362,15 +360,14 @@ export class Memcached extends EventEmitter {
     }
 
     public items(callback: CallbackFunction): void {
-        this.singles('stats items', callback)
+        this._singles('stats items', callback)
     }
 
     public statsItems(callback: CallbackFunction): void {
         this.items(callback)
     }
 
-    private singles(type: CommandType, callback: CallbackFunction) {
-        const memcached = this
+    private _singles(type: CommandType, callback: CallbackFunction) {
         let responses: Array<any> = []
         let errors: Array<Error>
         let calls: number = 0
@@ -392,12 +389,12 @@ export class Memcached extends EventEmitter {
             }
         }
 
-        this.multi([], (server, keys, index, totals) => {
+        this._multi([], (server, keys, index, totals) => {
             if (!calls) {
                 calls = totals
             }
 
-            memcached.executeCommand((noreply) => ({
+            this._executeCommand((noreply) => ({
                 callback: handle,
                 type,
                 command: type,
@@ -405,9 +402,9 @@ export class Memcached extends EventEmitter {
         })
     }
 
-    private incrdecr(type: 'incr' | 'decr', key: string, value: number, callback: CallbackFunction) {
-        const fullkey = `${this.config.namespace}${key}`
-        this.executeCommand((noreply) => ({
+    private _incrdecr(type: 'incr' | 'decr', key: string, value: number, callback: CallbackFunction) {
+        const fullkey = `${this._config.namespace}${key}`
+        this._executeCommand((noreply) => ({
             key: fullkey,
             callback,
             value,
@@ -428,7 +425,7 @@ export class Memcached extends EventEmitter {
     // commands will use the same syntax for the Memcached server. Some commands
     // do not require a lifetime and a flag, but the memcached server is smart
     // enough to ignore those.
-    private setters(
+    private _setters(
         type: CommandType,
         key: string,
         value: any,
@@ -436,7 +433,7 @@ export class Memcached extends EventEmitter {
         callback: CallbackFunction,
         cas: string = '',
     ): void {
-        const fullKey = `${this.config.namespace}${key}`
+        const fullKey = `${this._config.namespace}${key}`
         let flag: number = 0
         const valuetype: string = typeof value
 
@@ -457,14 +454,14 @@ export class Memcached extends EventEmitter {
 
         const length: number = Buffer.byteLength(value)
 
-        if (length > this.config.maxValue) {
-            this.errorResponse(
-                new Error(`The length of the value is greater than ${this.config.maxValue}`),
+        if (length > this._config.maxValue) {
+            this._errorResponse(
+                new Error(`The length of the value is greater than ${this._config.maxValue}`),
                 callback,
             )
 
         } else {
-            this.executeCommand((noreply): CommandOptions => ({
+            this._executeCommand((noreply): CommandOptions => ({
                 key: fullKey,
                 callback,
                 lifetime,
@@ -486,22 +483,22 @@ export class Memcached extends EventEmitter {
         }
     }
 
-    private errorResponse(error: Error, callback: CallbackFunction): boolean {
+    private _errorResponse(error: Error, callback: CallbackFunction): boolean {
         if (typeof callback === 'function') {
-            this.makeCallback(callback, error, false)
+            this._makeCallback(callback, error, false)
         }
 
         return false
     }
 
-    private makeCallback(callback: CallbackFunction, err?: ErrorValue, value?: any): void {
-        this.activeQueries--
+    private _makeCallback(callback: CallbackFunction, err?: ErrorValue, value?: any): void {
+        this._activeQueries--
         callback(err, value) // loose first
     }
 
     // Creates a multi stream, so it's easier to query agains multiple memcached
     // servers.
-    private multi(keys: Array<string>, callback: (server: string, key: Array<string>, index: number, totals: number) => void): void {
+    private _multi(keys: Array<string>, callback: (server: string, key: Array<string>, index: number, totals: number) => void): void {
         const map: { [name: string]: Array<string> } = {}
         let servers
         let i
@@ -510,9 +507,9 @@ export class Memcached extends EventEmitter {
         // or just gives all servers if we don't have keys
         if (keys && keys.length > 0) {
             keys.forEach((key: string): void => {
-                const server: string = this.servers.length === 1
-                    ? this.servers[0]
-                    : this.hashRing.get(key)
+                const server: string = this._servers.length === 1
+                    ? this._servers[0]
+                    : this._hashRing.get(key)
 
                 if (map[server]) {
                     map[server].push(key)
@@ -525,22 +522,21 @@ export class Memcached extends EventEmitter {
             // store the servers
             servers = Object.keys(map)
         } else {
-            servers = this.servers
+            servers = this._servers
         }
 
         i = servers.length
 
         while (i--) {
-            // memcached.delegateCallback(this, servers[i], map[servers[i]], i, servers.length, callback);
             callback(servers[i], map[servers[i]], i, servers.length)
         }
     }
 
-    private failedServers(): Array<string> {
+    private _failedServers(): Array<string> {
         const result: Array<string> = []
 
-        for (const server in this.issues) {
-            if (this.issues[server].failed) {
+        for (const server in this._issues) {
+            if (this._issues[server].failed) {
                 result.push(server)
             }
         }
@@ -548,39 +544,39 @@ export class Memcached extends EventEmitter {
         return result
     }
 
-    private executeCommand(compiler: CommandCompiler, server?: string): void {
-        this.activeQueries += 1
+    private _executeCommand(compiler: CommandCompiler, server?: string): void {
+        this._activeQueries += 1
         const command: IMemcachedCommand = makeCommand(compiler())
 
-        if (this.activeQueries > this.config.maxQueueSize && this.config.maxQueueSize > 0) {
-            this.makeCallback(command.callback, new Error('over queue limit'), null)
+        if (this._activeQueries > this._config.maxQueueSize && this._config.maxQueueSize > 0) {
+            this._makeCallback(command.callback, new Error('over queue limit'), null)
 
-        } else if (command.validate && !Utils.validateArg(command, this.config)) {
-            this.activeQueries -= 1
+        } else if (command.validate && !Utils.validateArg(command, this._config)) {
+            this._activeQueries -= 1
 
         } else {
             // generate a regular query,
-            const redundancy = this.config.redundancy < this.servers.length
+            const redundancy = this._config.redundancy < this._servers.length
             const queryRedundancy = command.redundancyEnabled
             let redundants: Array<string> = []
 
             if (redundancy && queryRedundancy) {
-                redundants = this.hashRing.range(command.key, (this.config.redundancy + 1), true)
+                redundants = this._hashRing.range(command.key, (this._config.redundancy + 1), true)
             }
 
             // try to find the correct server for this query
             if (server === undefined) {
                 // no need to do a hashring lookup if we only have one server assigned to
                 // us
-                if (this.servers.length === 1) {
-                    server = this.servers[0]
+                if (this._servers.length === 1) {
+                    server = this._servers[0]
 
                 } else {
                     if (redundancy && queryRedundancy) {
                         server = redundants.shift()
 
                     } else {
-                        server = this.hashRing.get(command.key)
+                        server = this._hashRing.get(command.key)
                     }
                 }
             }
@@ -588,15 +584,15 @@ export class Memcached extends EventEmitter {
             // check if any server exists or and if the server is still alive
             // a server may not exist if the manager was never able to connect
             // to any server.
-            if (server === undefined || (server in this.issues && this.issues[server].failed)) {
+            if (server === undefined || (server in this._issues && this._issues[server].failed)) {
                 if (command.callback) {
-                    const failedServers: string = this.failedServers().join()
-                    this.makeCallback(command.callback, new Error(`Server at ${failedServers} not available`))
+                    const failedServers: string = this._failedServers().join()
+                    this._makeCallback(command.callback, new Error(`Server at ${failedServers} not available`))
                 }
 
             } else if (server !== undefined) {
-                this.connect(server, (error: ErrorValue, socket: MemcachedSocket): void => {
-                    if (this.config.debug) {
+                this._connect(server, (error: ErrorValue, socket: MemcachedSocket): void => {
+                    if (this._config.debug) {
                         command.command.split(LINEBREAK).forEach((line) => {
                             console.log(socket.streamID + ' << ' + line)
                         })
@@ -610,26 +606,26 @@ export class Memcached extends EventEmitter {
                         }
                         const message = `Unable to connect to socket[${server}]`
                         error = error || new Error(message)
-                        this.connectionIssue(error.toString(), connectionLike)
+                        this._connectionIssue(error.toString(), connectionLike)
 
                         if (command.callback) {
-                            this.makeCallback(command.callback, error)
+                            this._makeCallback(command.callback, error)
                         }
 
                     } else {
                         // Other errors besides inability to connect to server
                         if (error) {
-                            this.connectionIssue(error.toString(), socket)
+                            this._connectionIssue(error.toString(), socket)
                             if (command.callback) {
-                                this.makeCallback(command.callback, error)
+                                this._makeCallback(command.callback, error)
                             }
 
                         } else if (!socket.writable) {
                             error = new Error(`Unable to write to socket[${socket.serverAddress}]`)
-                            this.connectionIssue(error.toString(), socket)
+                            this._connectionIssue(error.toString(), socket)
 
                             if (command.callback) {
-                                this.makeCallback(command.callback, error)
+                                this._makeCallback(command.callback, error)
                             }
 
                         } else {
@@ -645,7 +641,7 @@ export class Memcached extends EventEmitter {
         }
     }
 
-    private connectionIssue(error: string, socket: IConnectionLike): void {
+    private _connectionIssue(error: string, socket: IConnectionLike): void {
         if (socket && socket.end) {
             socket.end()
         }
@@ -655,19 +651,19 @@ export class Memcached extends EventEmitter {
         const memcached = this
 
         // check for existing issue logs, or create a new log
-        if (server in this.issues) {
-            issues = this.issues[server]
+        if (server in this._issues) {
+            issues = this._issues[server]
 
         } else {
-            issues = this.issues[server] = new IssueLog({
+            issues = this._issues[server] = new IssueLog({
                 server,
                 tokens: socket.tokens,
-                reconnect: this.config.reconnect,
-                failures: this.config.failures,
-                failuresTimeout: this.config.failuresTimeout,
-                retry: this.config.retry,
-                remove: this.config.remove,
-                failOverServers: this.config.failOverServers,
+                reconnect: this._config.reconnect,
+                failures: this._config.failures,
+                failuresTimeout: this._config.failuresTimeout,
+                retry: this._config.retry,
+                remove: this._config.remove,
+                failOverServers: this._config.failOverServers,
             })
 
             // proxy the events
@@ -687,13 +683,13 @@ export class Memcached extends EventEmitter {
                 remove: function remove(details: IIssueLogDetails) {
                     // emit event and remove servers
                     memcached.emit('remove', details)
-                    memcached.connections[server].end()
+                    memcached._connections[server].end()
 
-                    if (memcached.config.failOverServers.length > 0) {
-                        memcached.hashRing.swap(server, memcached.config.failOverServers.shift()!)
+                    if (memcached._config.failOverServers.length > 0) {
+                        memcached._hashRing.swap(server, memcached._config.failOverServers.shift()!)
 
                     } else {
-                        memcached.hashRing.remove(server)
+                        memcached._hashRing.remove(server)
                         memcached.emit('failure', details)
                     }
                 },
@@ -709,28 +705,26 @@ export class Memcached extends EventEmitter {
 
     // Creates or generates a new connection for the give server, the callback
     // will receive the connection if the operation was successful
-    private connect(server: string, callback: ConnectionCallback): void {
+    private _connect(server: string, callback: ConnectionCallback): void {
         // Default port to 11211
         if (!server.match(/(.+):(\d+)$/)) {
             server = `${server}:11211`
         }
 
         // server is dead, bail out
-        if (server in this.issues && this.issues[server].failed) {
+        if (server in this._issues && this._issues[server].failed) {
             return callback()
 
         } else {
             // fetch from connection pool
-            if (server in this.connections) {
-                this.connections[server].pull(callback)
+            if (server in this._connections) {
+                this._connections[server].pull(callback)
 
             } else {
                 // No connection factory created yet, so we must build one
                 const serverTokens: Array<string> = (Array.isArray(server) && server[0] === '/')
                     ? server
                     : /(.*):(\d+){1,}$/.exec(server)!.reverse()
-
-                const memcached = this
 
                 // Pop original string from array
                 if (Array.isArray(serverTokens)) {
@@ -743,12 +737,12 @@ export class Memcached extends EventEmitter {
                  * Generate a new connection pool manager.
                  */
 
-                const manager = new Jackpot(memcached.config.poolSize)
-                manager.retries = memcached.config.retries
-                manager.factor = memcached.config.factor
-                manager.minTimeout = memcached.config.minTimeout
-                manager.maxTimeout = memcached.config.maxTimeout
-                manager.randomize = memcached.config.randomize
+                const manager = new Jackpot(this._config.poolSize)
+                manager.retries = this._config.retries
+                manager.factor = this._config.factor
+                manager.minTimeout = this._config.minTimeout
+                manager.maxTimeout = this._config.maxTimeout
+                manager.randomize = this._config.randomize
 
                 manager.setMaxListeners(0)
 
@@ -757,12 +751,12 @@ export class Memcached extends EventEmitter {
                     const socket = new MemcachedSocket(streamID, server, this)
                     const idleTimeout = () => { manager.remove(socket) }
                     const streamError = (e: Error) => {
-                        memcached.connectionIssue(e.toString(), socket)
+                        this._connectionIssue(e.toString(), socket)
                         manager.remove(socket)
                     }
 
                     // config the Stream
-                    socket.setTimeout(memcached.config.timeout)
+                    socket.setTimeout(this._config.timeout)
                     socket.setNoDelay(true)
                     socket.setEncoding('utf8')
                     socket.tokens = [ ...serverTokens ]
@@ -773,12 +767,12 @@ export class Memcached extends EventEmitter {
                             manager.remove(socket)
                         },
                         data: (data: Buffer) => {
-                            this.buffer(socket, data)
+                            this._buffer(socket, data)
                         },
                         connect: () => {
                             // Jackpot handles any pre-connect timeouts by calling back
                             // with the error object.
-                            socket.setTimeout(socket.memcached.config.idle, idleTimeout)
+                            socket.setTimeout(socket.memcached._config.idle, idleTimeout)
                             // Jackpot handles any pre-connect errors, but does not handle errors
                             // once a connection has been made, nor does Jackpot handle releasing
                             // connections if an error occurs post-connect
@@ -793,21 +787,21 @@ export class Memcached extends EventEmitter {
                 })
 
                 manager.on('error', (err: Error): void => {
-                    if (memcached.config.debug) {
+                    if (this._config.debug) {
                         console.log('Connection error', err)
                     }
                 })
 
-                this.connections[server] = manager
+                this._connections[server] = manager
 
                 // now that we have setup our connection factory we can allocate a new
                 // connection
-                this.connections[server].pull(callback)
+                this._connections[server].pull(callback)
             }
         }
     }
 
-    private buffer(socket: MemcachedSocket, buffer: Buffer): void {
+    private _buffer(socket: MemcachedSocket, buffer: Buffer): void {
         socket.responseBuffer += buffer
 
         // only call transform the data once we are sure, 100% sure, that we valid
@@ -817,7 +811,7 @@ export class Memcached extends EventEmitter {
 
             const chunks = socket.responseBuffer.split(LINEBREAK)
 
-            if (this.config.debug) {
+            if (this._config.debug) {
                 chunks.forEach((line: string): void => {
                     console.log(socket.streamID + ' >> ' + line)
                 })
@@ -831,11 +825,11 @@ export class Memcached extends EventEmitter {
 
             socket.responseBuffer = '' // clear!
             socket.bufferArray = socket.bufferArray.concat(chunks)
-            this.rawDataReceived(socket)
+            this._rawDataReceived(socket)
         }
     }
 
-    private rawDataReceived(socket: MemcachedSocket): void {
+    private _rawDataReceived(socket: MemcachedSocket): void {
         const queue: Array<any> = []
         const err: Array<Error> = []
 
@@ -878,7 +872,7 @@ export class Memcached extends EventEmitter {
                         dataSet = Utils.unescapeValue(socket.bufferArray.shift() || '')
                     }
 
-                    resultSet = this.parse(tokenType, socket, tokenSet, dataSet, token, err, queue)
+                    resultSet = this._parse(tokenType, socket, tokenSet, dataSet, token, err, queue)
 
                     // check how we need to handle the resultSet response
                     switch (resultSet.shift()) {
@@ -893,12 +887,12 @@ export class Memcached extends EventEmitter {
                             if (metaData && metaData.callback) {
                                 const parsedResult = // see if optional parsing needs to be applied to make the result set more readable
                                     RESULT_PARSERS.indexOf(metaData.type) > -1
-                                        ? this.parseResults(metaData.type, resultSet, err, socket)
+                                        ? this._parseResults(metaData.type, resultSet, err, socket)
                                         : !Array.isArray(queue) || queue.length > 1 ? queue : queue[0]
 
                                 metaData.execution = Date.now() - metaData.start
 
-                                this.delegateCallback(
+                                this._delegateCallback(
                                     metaData,
                                     // err.length ? err : err[0],
                                     err[0],
@@ -918,7 +912,7 @@ export class Memcached extends EventEmitter {
                             if (metaData && metaData.callback) {
                                 metaData.execution = Date.now() - metaData.start
 
-                                this.delegateCallback(
+                                this._delegateCallback(
                                     metaData,
                                     // err.length > 1 ? err : err[0],
                                     err[0],
@@ -938,7 +932,7 @@ export class Memcached extends EventEmitter {
 
                     if (metaData && metaData.callback) {
                         metaData.execution = Date.now() - metaData.start
-                        this.delegateCallback(
+                        this._delegateCallback(
                             metaData,
                             new Error(`Unknown response from the memcached server: ${token}`),
                             false,
@@ -956,7 +950,7 @@ export class Memcached extends EventEmitter {
         }
     }
 
-    private parse(
+    private _parse(
         tokenType: string,
         socket: MemcachedSocket,
         tokenSet: Array<string>,
@@ -984,7 +978,7 @@ export class Memcached extends EventEmitter {
             }
 
             case 'SERVER_ERROR': {
-                this.connectionIssue(tokenSet.splice(1).join(' '), socket)
+                this._connectionIssue(tokenSet.splice(1).join(' '), socket)
                 return [CONTINUE, false]
             }
 
@@ -1103,7 +1097,7 @@ export class Memcached extends EventEmitter {
         }
     }
 
-    private parseResults(type: string, resultSet: Array<any> | undefined, err: Array<Error>, socket: MemcachedSocket): any {
+    private _parseResults(type: string, resultSet: Array<any> | undefined, err: Array<Error>, socket: MemcachedSocket): any {
         switch (type) {
             // combines the stats array, in to an object
             case 'stats': {
@@ -1129,7 +1123,7 @@ export class Memcached extends EventEmitter {
 
             // the settings uses the same parse format as the regular stats
             case 'stats settings': {
-                return this.parseResults('stats', resultSet, err, socket)
+                return this._parseResults('stats', resultSet, err, socket)
             }
 
             // Group slabs by slab id
@@ -1189,8 +1183,8 @@ export class Memcached extends EventEmitter {
         }
     }
 
-    private delegateCallback(command: IMemcachedCommand, err: Error | undefined, result: any, callback: CallbackFunction): void {
-        this.activeQueries -= 1
+    private _delegateCallback(command: IMemcachedCommand, err: Error | undefined, result: any, callback: CallbackFunction): void {
+        this._activeQueries -= 1
         callback(err, result)
     }
 }

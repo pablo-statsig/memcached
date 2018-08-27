@@ -36,7 +36,7 @@ describe('Memcached parser', () => {
         chunks.push(chunk(2, chunkJSON.length));
 
         // Insert first chunk
-        (memcached as any).buffer(socket, chunks.join('\r\n') + '\r\n')
+        (memcached as any)._buffer(socket, chunks.join('\r\n') + '\r\n')
 
         // We check for bufferArray length otherwise it will crash on 'SyntaxError: Unexpected token V'
         assert.equal(socket.bufferArray.length, 3)
@@ -48,7 +48,7 @@ describe('Memcached parser', () => {
         chunks.push(chunkJSON);
 
         // Insert second chunk
-        (memcached as any).buffer(socket, chunks.join('\r\n') + '\r\nEND\r\n')
+        (memcached as any)._buffer(socket, chunks.join('\r\n') + '\r\nEND\r\n')
 
         // Check if everything is cleared up nicely.
         assert.equal(socket.responseBuffer.length, 0)
