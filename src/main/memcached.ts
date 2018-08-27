@@ -309,6 +309,99 @@ export class Memcached extends EventEmitter {
         this.decr(key, value, callback)
     }
 
+    // You need to use the items dump to get the correct server and slab settings
+    // see simple_cachedump.js for an example
+    public cachedump(server: string, slabid: number, num: number, callback: CallbackFunction) {
+        this.executeCommand((noreply) => ({
+            callback,
+            number: num,
+            slabid,
+            validate: [
+                ['number', Number],
+                ['slabid', Number],
+                ['callback', Function],
+            ],
+            type: 'stats cachedump',
+            command: `stats cachedump ${slabid} ${num}`,
+        }), server)
+    }
+
+    public version(callback: CallbackFunction): void {
+        this.singles('version', callback)
+    }
+
+    public flush(callback: CallbackFunction): void {
+        this.singles('flush_all', callback)
+    }
+
+    public flushAll(callback: CallbackFunction): void {
+        this.flush(callback)
+    }
+
+    public stats(callback: CallbackFunction): void {
+        this.singles('stats', callback)
+    }
+
+    public settings(callback: CallbackFunction): void {
+        this.singles('stats settings', callback)
+    }
+
+    public statsSettings(callback: CallbackFunction): void {
+        this.settings(callback)
+    }
+
+    public slabs(callback: CallbackFunction): void {
+        this.singles('stats slabs', callback)
+    }
+
+    public statsSlabs(callback: CallbackFunction): void {
+        this.slabs(callback)
+    }
+
+    public items(callback: CallbackFunction): void {
+        this.singles('stats items', callback)
+    }
+
+    public statsItems(callback: CallbackFunction): void {
+        this.items(callback)
+    }
+
+    private singles(type: CommandType, callback: CallbackFunction) {
+        const memcached = this
+        let responses: Array<any> = []
+        let errors: Array<Error>
+        let calls: number = 0
+
+          // handle multiple servers
+        const handle = (err: ErrorValue, results: Array<any>): void => {
+            if (err) {
+                errors = errors || []
+                errors = errors.concat(err)
+            }
+
+            if (results) {
+                responses = responses.concat(results)
+            }
+
+            // multi calls should ALWAYS return an array!
+            if (!--calls) {
+                callback(errors && errors.length ? errors.pop() : undefined, responses)
+            }
+        }
+
+        this.multi([], (server, keys, index, totals) => {
+            if (!calls) {
+                calls = totals
+            }
+
+            memcached.executeCommand((noreply) => ({
+                callback: handle,
+                type,
+                command: type,
+            }), server)
+        })
+    }
+
     private incrdecr(type: 'incr' | 'decr', key: string, value: number, callback: CallbackFunction) {
         const fullkey = `${this.config.namespace}${key}`
         this.executeCommand((noreply) => ({
@@ -412,7 +505,7 @@ export class Memcached extends EventEmitter {
 
         // gets all servers based on the supplied keys,
         // or just gives all servers if we don't have keys
-        if (keys) {
+        if (keys && keys.length > 0) {
             keys.forEach((key: string): void => {
                 const server: string = this.servers.length === 1
                     ? this.servers[0]

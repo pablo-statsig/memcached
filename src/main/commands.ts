@@ -19,7 +19,8 @@ export type ValidationItems =
 export type CommandType =
     'touch' | 'get' | 'gets' | 'delete' | 'stats cachedump' |
     'set' | 'replace' | 'add' | 'cas' | 'append' | 'prepend' |
-    'incr' | 'decr'
+    'incr' | 'decr' | 'version' | 'flush_all' | 'stats' |
+    'stats settings' | 'stats slabs' | 'stats items'
 
 export type CommandCompiler =
     (noreply?: boolean) => CommandOptions

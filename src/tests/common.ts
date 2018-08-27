@@ -4,7 +4,7 @@
  * will get flushed!.
  *
  * If your memcache hosts is not the default one
- * (10.211.55.5), you can pass another one using the
+ * (localhost), you can pass another one using the
  * environment variable MEMCACHED__HOST. E.g.:
  *
  * MEMCACHED__HOST=localhost npm test
@@ -15,11 +15,11 @@
 const testMemcachedHost = process.env.MEMCACHED__HOST || 'localhost'
 
 export const servers = {
-    single: testMemcachedHost + ':11211'
-  , multi: [
-      testMemcachedHost + ':11211'
-    , testMemcachedHost + ':11212'
-    , testMemcachedHost + ':11213',
+    single: testMemcachedHost + ':11211',
+    multi: [
+      testMemcachedHost + ':11211',
+      testMemcachedHost + ':11212',
+      testMemcachedHost + ':11213',
   ],
 }
 
