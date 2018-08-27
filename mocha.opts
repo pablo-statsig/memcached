@@ -1,6 +1,5 @@
---require should
 --reporter spec
 --exit
 --full-trace
 --timeout 10000
-test/**/*.test.js
+dist/tests/**/*.spec.js
