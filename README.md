@@ -1,7 +1,7 @@
 ## Notice
 
-This is forked from [memcached](https://github.com/3rd-Eden/memcached). This fork will
-soon be rewritten in TypeScript. For now the types have been moved into this repo.
+This is forked from [3rd-eden/memcached](https://github.com/3rd-Eden/memcached). This fork has
+been rewritten in TypeScript and the API will soon be updated to leverage Promises.
 
 # Memcached
 
