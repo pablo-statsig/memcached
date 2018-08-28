@@ -94,6 +94,14 @@ export class Memcached extends EventEmitter {
         this._servers = []
         this._issues = {}
         this._connections = {}
+
+        if (Array.isArray(servers)) {
+            this._servers = servers
+        } else if (typeof servers === 'object') {
+            this._servers = Object.keys(servers)
+        } else if (typeof servers === 'string') {
+            this._servers.push(servers)
+        }
     }
 
     public end(): void {
