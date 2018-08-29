@@ -144,9 +144,13 @@ const memcached: MemcachedClient = new MemcachedClient(servers, options);
 **memcached.get** Get the value for the given key.
 
 * `key`: **String**, the key
+* `decode`: **function**, (optional) function to decode the string reference
+            to a class object
 
 ```typescript
 const readValue = await memcached.get(key).catch((err) => {return err});
+// OR
+const readValue = await memcached.get(key, decode).catch((err) => {return err});
 ```
 
 **memcached.gets** Get the value and the CAS id.
@@ -191,6 +195,23 @@ await memcached.set(key, value)
 await memcached.set(key, value, customTTL)
 ```
 
+**memcached.encodeAndSet** Stores reference to class object in Memcached.
+
+* `key`: **String** the name of the key
+* `value`: **Mixed** Either a buffer, JSON, number or string that you want to store.
+* `encoder`: **Function** that encodes the properties of class into a string.
+* `lifetime`: **Number**, (optional) how long the data needs to be stored
+              measured in `seconds`
+
+```typescript
+const key = 'key'
+const value = 1
+const customTTL = 60 // In seconds
+await memcached.encodeAndSet(key, value, encoder)
+// OR
+await memcached.encodeAndSet(key, value, encoder, customTTL)
+```
+
 **memcached.cas** Add the value, only if it matches the given CAS value.
 
 * `key`: **String** the name of the key
@@ -207,6 +228,26 @@ const customTTL = 60
 await memcached.cas(key, newValue, cas)
 // OR
 await memcached.cas(key, newValue, cas, customTTL)
+```
+
+**memcached.encodeAndCas** Add the reference to class object, only if it matches
+the given CAS value.
+
+* `key`: **String** the name of the key
+* `value`: **Mixed** Either a buffer, JSON, number or string that you want to store.
+* `cas`: **String** the CAS value
+* `encoder`: **Function** that encodes the properties of class into a string.
+* `lifetime`: **Number**, (optional) how long the data needs to be replaced
+              measured in `seconds`
+
+```typescript
+const result = await memcached.gets(key)
+const cas = result.cas
+const newValue = 20
+const customTTL = 60
+await memcached.encodeAndCas(key, newValue, cas, encoder)
+// OR
+await memcached.encodeAndCas(key, newValue, cas, encoder, customTTL)
 ```
 
 **memcached.del** Remove the key from memcached.

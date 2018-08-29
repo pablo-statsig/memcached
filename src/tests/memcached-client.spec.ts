@@ -225,4 +225,60 @@ describe('Memcached', () => {
         })
         assert.isFalse(result)
     })
+
+    it('should be able to store and retrieve class reference', async () => {
+        const servers: Servers = ['localhost:11211']
+        const client = new MemcachedClient(servers)
+
+        class FooCl {
+            public static toJSON(obj: any) {
+                return JSON.stringify({
+                    name: obj.name,
+                })
+            }
+            public static fromJSON(jsonString: string) {
+                try {
+                    const json = JSON.parse(jsonString)
+                    return new FooCl(json.name)
+                } catch (err) {
+                    return null
+                }
+            }
+            private name: string = 'dummy'
+            constructor(name: string) {
+                this.name = name
+            }
+            public getName() {
+                return this.name
+            }
+            public setName(name: string) {
+                this.name = name
+            }
+        }
+
+        const foo = new FooCl('user1')
+        const key = 'foo'
+
+        await client.encodeAndSet(key, foo, FooCl.toJSON)
+        let resultFn = await client.get(key, FooCl.fromJSON)
+        assert.isDefined(resultFn)
+        assert.isNotNull(resultFn)
+        if (resultFn !== null) {
+            assert.equal(resultFn.getName(), 'user1')
+            resultFn.setName('user2')
+            assert.equal(resultFn.getName(), 'user2')
+        }
+
+        const result = await client.gets(key, FooCl.fromJSON)
+        resultFn = result.value
+        const cas = result.cas
+        if (resultFn !== null) {
+            resultFn.setName('user2')
+            await client.encodeAndCas(key, resultFn, cas, FooCl.toJSON)
+            resultFn = await client.get(key, FooCl.fromJSON)
+            if (resultFn !== null) {
+                assert.equal(resultFn.getName(), 'user2')
+            }
+        }
+    })
 })
