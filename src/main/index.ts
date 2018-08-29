@@ -120,4 +120,9 @@ export class MemcachedClient {
             })
         })
     }
+
+    public end<T>(): void {
+        this.client.end()
+        return
+    }
 }
