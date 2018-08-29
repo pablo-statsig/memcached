@@ -1,6 +1,6 @@
 import { MemcachedMissingKey, MemcachedOpFailed } from './errors'
 import { Memcached } from './memcached'
-import { ICasResult, IMemcachedConfig, Servers } from './types'
+import { DecoderFunction, EncoderFunction, ICasResult, IMemcachedConfig, Servers } from './types'
 
 export { Memcached } from './memcached'
 export * from './types'
@@ -15,13 +15,15 @@ export class MemcachedClient {
         this.client = new Memcached(servers, options)
     }
 
-    public async get<T>(key: string): Promise<T> {
+    public async get<T>(key: string, decoder?: DecoderFunction<T>): Promise<T> {
         return new Promise<T>((resolve, reject) => {
             this.client.get(key, (err: any, data: any) => {
                 if (err !== undefined) {
                     reject(err)
                 } else if (data === undefined) {
                     reject(new MemcachedMissingKey(key))
+                } else if (decoder !== undefined) {
+                    resolve(decoder(data))
                 } else {
                     resolve(data)
                 }
@@ -29,8 +31,8 @@ export class MemcachedClient {
         })
     }
 
-    public async getWithDefault<T>(key: string, defaultValue: T): Promise<T> {
-        return this.get<T>(key).catch((err: any) => {
+    public async getWithDefault<T>(key: string, defaultValue: T, decoder?: DecoderFunction<T>): Promise<T> {
+        return this.get<T>(key, decoder).catch((err: any) => {
             return defaultValue
         })
     }
@@ -47,13 +49,19 @@ export class MemcachedClient {
         })
     }
 
-    public async gets<T>(key: string): Promise<ICasResult> {
+    public async gets<T>(key: string, decoder?: DecoderFunction<T>): Promise<ICasResult> {
         return new Promise<ICasResult>((resolve, reject) => {
             this.client.gets(key, (err: any, data: ICasResult) => {
                 if (err !== undefined) {
                     reject(err)
                 } else if (data === undefined) {
                     reject(new MemcachedMissingKey(key))
+                } else if (decoder !== undefined) {
+                    const decodedValue = decoder(data.value)
+                    resolve({
+                        cas: data.cas,
+                        value: decodedValue,
+                    })
                 } else {
                     resolve(data)
                 }
@@ -63,6 +71,9 @@ export class MemcachedClient {
 
     public async set<T>(key: string, value: T, ttl: number = this.defaultTTL): Promise<boolean> {
         return new Promise<boolean>((resolve, reject) => {
+            if (ttl === undefined) {
+                ttl = this.defaultTTL
+            }
             this.client.set(key, value, ttl, (err: any, result: boolean) => {
                 if (err !== undefined) {
                     reject(err)
@@ -75,6 +86,11 @@ export class MemcachedClient {
                 }
             })
         })
+    }
+
+    public async encodeAndSet<T>(key: string, value: T, encoder: EncoderFunction<T>, ttl: number = this.defaultTTL): Promise<boolean> {
+        const encodedValue: string = encoder(value)
+        return this.set(key, encodedValue, ttl)
     }
 
     public async cas<T>(key: string, value: T, cas: string, ttl: number = this.defaultTTL): Promise<any> {
@@ -91,6 +107,11 @@ export class MemcachedClient {
                 }
             })
         })
+    }
+
+    public async encodeAndCas<T>(key: string, value: T, cas: string, encoder: EncoderFunction<T>, ttl: number = this.defaultTTL): Promise<boolean> {
+        const encodedValue: string = encoder(value)
+        return this.cas(key, encodedValue, cas, ttl)
     }
 
     public async del<T>(key: string): Promise<boolean> {

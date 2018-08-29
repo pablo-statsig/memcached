@@ -60,3 +60,9 @@ export interface ICasResult {
     cas: string
     value: any
 }
+
+export type DecoderFunction<T> =
+    (input: string) => T
+
+export type EncoderFunction<T> =
+    (input: T) => string
