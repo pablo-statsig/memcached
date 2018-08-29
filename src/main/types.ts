@@ -55,3 +55,8 @@ export interface IMemcachedConfig {
 
 export type MemcachedOptions =
     Partial<IMemcachedConfig>
+
+export interface ICasResult {
+    cas: string
+    value: any
+}
