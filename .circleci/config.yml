@@ -41,6 +41,9 @@ jobs:
           name: Install NPM Dependencies
           command: npm install
       - run:
+          name: Build Publish Assets
+          command: npm run build
+      - run:
           name: Publish to NPM
           command: npm publish --access public
 
@@ -54,6 +57,9 @@ jobs:
       - run:
           name: Install NPM Dependencies
           command: npm install
+      - run:
+          name: Build Publish Assets
+          command: npm run build
       - run:
           name: Publish to NPM
           command: npm publish --tag next --access public
