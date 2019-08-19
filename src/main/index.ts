@@ -1,6 +1,6 @@
 import { MemcachedMissingKey, MemcachedOpFailed } from './errors'
 import { Memcached } from './memcached'
-import { DecoderFunction, EncoderFunction, ICasResult, IMemcachedConfig, Servers } from './types'
+import { DecoderFunction, EncoderFunction, eventNames, ICasResult, IMemcachedConfig, Servers } from './types'
 
 export { Memcached } from './memcached'
 export * from './types'
@@ -13,6 +13,10 @@ export class MemcachedClient {
             this.defaultTTL = options.defaultTTL
         }
         this.client = new Memcached(servers, options)
+    }
+
+    public addListener(eventName: eventNames, handler: (...args: Array<any>) => void) {
+        this.client.addListener(eventName, handler)
     }
 
     public async get<T>(key: string, decoder?: DecoderFunction<T>): Promise<T> {

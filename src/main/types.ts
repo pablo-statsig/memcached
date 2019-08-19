@@ -66,3 +66,5 @@ export type DecoderFunction<T> =
 
 export type EncoderFunction<T> =
     (input: T) => string
+
+export type eventNames = 'issue' | 'failure' | 'reconnecting' | 'reconnect' | 'remove'
