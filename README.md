@@ -271,6 +271,19 @@ a synchronous call
 memcached.end()
 ```
 
+**memcached.addListener** Add custom event listener for handling events memcached client emits.
+
+```typescript
+function reconnectingHandler(details) {
+  console.log("Total downtime caused by server " + details.server + " :" + details.totalDownTime + "ms")
+}
+function failureHandler(details) {
+  console.log("Server " + details.server + "went down due to: " + details.messages.join( '' ))
+}
+await memcached.addListener('failure', failureHandler)
+await memcached.addListener('reconnecting', reconnectingHandler)
+```
+
 # Compatibility
 For compatibility with other [libmemcached](http://libmemcached.org/Clients.html) clients they need to have the behavior
 `ketama_weighted` set to true and the `hash` set to the same as `node-memcached`'s
