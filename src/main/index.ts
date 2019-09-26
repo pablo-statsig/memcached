@@ -23,7 +23,7 @@ export class MemcachedClient {
         return new Promise<T>((resolve, reject) => {
             this.client.get(key, (err: any, data: any) => {
                 if (err !== undefined) {
-                    reject(err)
+                    reject(new MemcachedOpFailed('get', key, err.message))
                 } else if (data === undefined) {
                     reject(new MemcachedMissingKey(key))
                 } else if (decoder !== undefined) {
@@ -57,7 +57,7 @@ export class MemcachedClient {
         return new Promise<ICasResult>((resolve, reject) => {
             this.client.gets(key, (err: any, data: ICasResult) => {
                 if (err !== undefined) {
-                    reject(err)
+                    reject(new MemcachedOpFailed('gets', key, err.message))
                 } else if (data === undefined) {
                     reject(new MemcachedMissingKey(key))
                 } else if (decoder !== undefined) {
@@ -80,12 +80,31 @@ export class MemcachedClient {
             }
             this.client.set(key, value, ttl, (err: any, result: boolean) => {
                 if (err !== undefined) {
-                    reject(err)
+                    reject(new MemcachedOpFailed('set', key, err.message))
                 } else {
                     if (result) {
                         resolve(result)
                     } else {
                         reject(new MemcachedOpFailed('set', key))
+                    }
+                }
+            })
+        })
+    }
+
+    public async add<T>(key: string, value: T, ttl: number = this.defaultTTL): Promise<boolean> {
+        return new Promise<boolean>((resolve, reject) => {
+            if (ttl === undefined) {
+                ttl = this.defaultTTL
+            }
+            this.client.add(key, value, ttl, (err: any, result: boolean) => {
+                if (err !== undefined) {
+                    reject(new MemcachedOpFailed('add', key, err.message))
+                } else {
+                    if (result) {
+                        resolve(result)
+                    } else {
+                        reject(new MemcachedOpFailed('add', key))
                     }
                 }
             })
@@ -101,7 +120,7 @@ export class MemcachedClient {
         return new Promise<any>(async (resolve, reject) => {
             this.client.cas(key, value, cas, ttl, (err: any, result: boolean) => {
                 if (err !== undefined) {
-                    reject(err)
+                    reject(new MemcachedOpFailed('cas', key, err.message))
                 } else {
                     if (result) {
                         resolve(result)
@@ -122,7 +141,7 @@ export class MemcachedClient {
         return new Promise<boolean>((resolve, reject) => {
             this.client.del(key, (err: any, result: boolean) => {
                 if (err !== undefined) {
-                    reject(err)
+                    reject(new MemcachedOpFailed('del', key, err.message))
                 } else {
                     if (result) {
                         resolve(result)
