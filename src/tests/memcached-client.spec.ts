@@ -146,7 +146,7 @@ describe('Memcached', () => {
         }
         const client = new MemcachedClient(servers, options)
         await client.get('some_key').catch((err: any) => {
-            assert.equal(err.message, 'connect ECONNREFUSED 127.0.0.1:10000')
+            assert.equal(err.message, 'Operation[get] failed for key[some_key]. connect ECONNREFUSED 127.0.0.1:10000')
         })
         await client.get('some_key').catch((err: any) => {
             assert.equal(err.message, 'Given key[some_key] does not have a value in Memcached')

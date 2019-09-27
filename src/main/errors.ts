@@ -11,7 +11,11 @@ export class MemcachedExpiredValue extends Error {
 }
 
 export class MemcachedOpFailed extends Error {
-    constructor(operation: string, key: string) {
-        super(`Operation[${operation}] failed for key[${key}]`)
+    constructor(operation: string, key: string, error?: string) {
+        if (error === undefined) {
+            super(`Operation[${operation}] failed for key[${key}]`)
+        } else {
+            super(`Operation[${operation}] failed for key[${key}]. ${error}`)
+        }
     }
 }
