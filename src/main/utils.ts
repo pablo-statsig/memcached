@@ -73,7 +73,7 @@ export function validateArg(args: IMemcachedCommand, config: IMemcachedConfig) {
                 break
 
             default:
-                if (toString.call(value) === '[object global]' && !tokens[2]) {
+                if (toString.call(value) === '[object global]' && !(2 in tokens)) {
                     err = `Argument "${key}" is not defined.`
                 }
         }
