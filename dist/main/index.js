@@ -135,20 +135,10 @@ class MemcachedClient {
                 }
                 this.client.add(key, value, ttl, (err, result) => {
                     if (err !== undefined) {
-                        if (err.notStored) {
-                            resolve(false);
-                        }
-                        else {
-                            reject(new errors_1.MemcachedOpFailed('add', key, err.message));
-                        }
+                        reject(new errors_1.MemcachedOpFailed('add', key, err.message));
                     }
                     else {
-                        if (result) {
-                            resolve(true);
-                        }
-                        else {
-                            reject(new errors_1.MemcachedOpFailed('add', key));
-                        }
+                        resolve(result);
                     }
                 });
             });
