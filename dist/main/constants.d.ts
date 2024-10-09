@@ -1,0 +1,10 @@
+export declare const LINEBREAK = "\r\n";
+export declare const NOREPLY = " noreply";
+export declare const FLUSH = 1000;
+export declare const BUFFER = 100;
+export declare const CONTINUE = 10;
+export declare const FLAG_JSON: number;
+export declare const FLAG_BINARY: number;
+export declare const FLAG_NUMERIC: number;
+export declare const TOKEN_TYPES: Array<string>;
+export declare const RESULT_PARSERS: Array<string>;

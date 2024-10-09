@@ -4,7 +4,7 @@ specifiers:
   '@types/chai': ^4.1.4
   '@types/double-ended-queue': ^2.1.7
   '@types/mocha': ^5.2.5
-  '@types/node': ^16.11.34
+  '@types/node': ^16.18.113
   chai: ^4.1.2
   double-ended-queue: 2.1.0-0
   hashring: ^3.2.0
@@ -12,7 +12,7 @@ specifiers:
   mocha: ^5.2.0
   rimraf: ^3.0.2
   tslint: ^5.11.0
-  typescript: 4.6.x
+  typescript: 5.6.3
   wait-on: ^2.1.0
 
 dependencies:
@@ -28,8 +28,8 @@ devDependencies:
   chai: 4.5.0
   mocha: 5.2.0
   rimraf: 3.0.2
-  tslint: 5.20.1_typescript@4.6.4
-  typescript: 4.6.4
+  tslint: 5.20.1_typescript@5.6.3
+  typescript: 5.6.3
   wait-on: 2.1.2
 
 packages:
@@ -762,7 +762,7 @@ packages:
     resolution: {integrity: sha512-Xni35NKzjgMrwevysHTCArtLDpPvye8zV/0E4EyYn43P7/7qvQwPh9BGkHewbMulVntbigmcT7rdX3BNo9wRJg==}
     dev: true
 
-  /tslint/5.20.1_typescript@4.6.4:
+  /tslint/5.20.1_typescript@5.6.3:
     resolution: {integrity: sha512-EcMxhzCFt8k+/UP5r8waCf/lzmeSyVlqxqMEDQE7rWYiQky8KpIBz1JAoYXfROHrPZ1XXd43q8yQnULOLiBRQg==}
     engines: {node: '>=4.8.0'}
     hasBin: true
@@ -781,17 +781,17 @@ packages:
       resolve: 1.22.8
       semver: 5.7.2
       tslib: 1.14.1
-      tsutils: 2.29.0_typescript@4.6.4
-      typescript: 4.6.4
+      tsutils: 2.29.0_typescript@5.6.3
+      typescript: 5.6.3
     dev: true
 
-  /tsutils/2.29.0_typescript@4.6.4:
+  /tsutils/2.29.0_typescript@5.6.3:
     resolution: {integrity: sha512-g5JVHCIJwzfISaXpXE1qvNalca5Jwob6FjI4AoPlqMusJ6ftFE7IkkFoMhVLRgK+4Kx3gkzb8UZK5t5yTTvEmA==}
     peerDependencies:
       typescript: '>=2.1.0 || >=2.1.0-dev || >=2.2.0-dev || >=2.3.0-dev || >=2.4.0-dev || >=2.5.0-dev || >=2.6.0-dev || >=2.7.0-dev || >=2.8.0-dev || >=2.9.0-dev || >= 3.0.0-dev || >= 3.1.0-dev'
     dependencies:
       tslib: 1.14.1
-      typescript: 4.6.4
+      typescript: 5.6.3
     dev: true
 
   /tunnel-agent/0.6.0:
@@ -809,9 +809,9 @@ packages:
     engines: {node: '>=4'}
     dev: true
 
-  /typescript/4.6.4:
-    resolution: {integrity: sha512-9ia/jWHIEbo49HfjrLGfKbZSuWo9iTMwXO+Ca3pRsSpbsMbc7/IU8NKdCZVRRBafVPGnoJeFL76ZOAA84I9fEg==}
-    engines: {node: '>=4.2.0'}
+  /typescript/5.6.3:
+    resolution: {integrity: sha512-hjcS1mhfuyi4WW8IWtjP7brDrG2cuDZukyrYrSauoXGNgx0S7zceP07adYkJycEr56BOUTNPzbInooiN3fn1qw==}
+    engines: {node: '>=14.17'}
     hasBin: true
     dev: true
 

@@ -6,7 +6,7 @@
         "sourceMap": true,
         "declaration": true,
         "rootDir": "./src",
-        "outDir": "./d",
+        "outDir": "./dist",
         "noEmitOnError": true,
         "strict": true,
         "strictFunctionTypes": false,
@@ -16,6 +16,6 @@
     },
     "exclude": [
         "node_modules",
-        "d"
+        "dist"
     ]
 }
