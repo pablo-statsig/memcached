@@ -125,17 +125,9 @@ export class MemcachedClient {
       }
       this.client.add(key, value, ttl, (err: any, result: boolean) => {
         if (err !== undefined) {
-          if (err.notStored) {
-            resolve(false)
-          } else {
-            reject(new MemcachedOpFailed('add', key, err.message))
-          }
+          reject(new MemcachedOpFailed('add', key, err.message))
         } else {
-          if (result) {
-            resolve(true)
-          } else {
-            reject(new MemcachedOpFailed('add', key))
-          }
+          resolve(result)
         }
       })
     })

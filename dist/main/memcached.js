@@ -667,8 +667,6 @@ class Memcached extends events_1.EventEmitter {
     _parse(tokenType, socket, tokenSet, dataSet, token, err, queue) {
         switch (tokenType) {
             case 'NOT_STORED': {
-                const errObj = new Error('Item is not stored');
-                err.push(errObj);
                 return [constants_1.CONTINUE, false];
             }
             case 'ERROR': {
