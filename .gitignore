@@ -4,7 +4,7 @@
 node_modules
 
 # Build assets
-dist
+# dist
 
 # Temp files
 tmp
