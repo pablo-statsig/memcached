@@ -39,6 +39,7 @@ import HashRing = require('hashring')
 import Jackpot = require('jackpot')
 
 const ALL_COMMANDS = new RegExp('^(?:' + TOKEN_TYPES.join('|') + '|\\d' + ')')
+const ALL_COMMANDS_SET = new Set(TOKEN_TYPES)
 const BUFFERED_COMMANDS = new RegExp('^(?:' + TOKEN_TYPES.join('|') + ')')
 
 interface IConnectionMap {
@@ -49,20 +50,22 @@ class MemcachedSocket extends Socket {
   public streamID: number
   public metaData: Deque<IMemcachedCommand>
   public responseBuffer: string
-  public bufferArray: Array<string>
+  public bufferArray: Deque<string>
   public serverAddress: string
   public tokens: Array<any>
   public memcached: Memcached
+  public numEnd: number
 
   constructor(id: number, server: string, memcached: Memcached) {
     super()
     this.streamID = id
     this.metaData = new Deque<IMemcachedCommand>()
     this.responseBuffer = ''
-    this.bufferArray = []
+    this.bufferArray = new Deque<string>()
     this.tokens = []
     this.serverAddress = server
     this.memcached = memcached
+    this.numEnd = 0
   }
 }
 
@@ -911,7 +914,12 @@ export class Memcached extends EventEmitter {
       }
 
       socket.responseBuffer = '' // clear!
-      socket.bufferArray = socket.bufferArray.concat(chunks)
+      for (const chunk of chunks) {
+        if (chunk === 'END') {
+          socket.numEnd++
+        }
+      }
+      socket.bufferArray.push(...chunks)
       this._rawDataReceived(socket)
     }
   }
@@ -922,14 +930,17 @@ export class Memcached extends EventEmitter {
 
     while (
       socket.bufferArray.length &&
-      ALL_COMMANDS.test(socket.bufferArray[0])
+      ALL_COMMANDS_SET.has(socket.bufferArray.peekFront() || '')
     ) {
       const token: string = socket.bufferArray.shift()!
+      if (token === 'END') {
+        socket.numEnd--
+      }
       const tokenSet: Array<string> = token.split(' ')
       let dataSet: string | undefined = ''
       let resultSet: any
 
-      if (/^\d+$/.test(tokenSet[0])) {
+      if (Number.isInteger(Number(tokenSet[0]))) {
         // special case for "config get cluster"
         // Amazon-specific memcached configuration information, see aws
         // documentation regarding adding auto-discovery to your client library.
@@ -938,7 +949,7 @@ export class Memcached extends EventEmitter {
         //   hostname|ip-address|port hostname|ip-address|port hostname|ip-address|port\n\r\n
         if (
           /(([-.a-zA-Z0-9]+)\|(\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b)\|(\d+))/.test(
-            socket.bufferArray[0],
+            socket.bufferArray.peekFront() || '',
           )
         ) {
           tokenSet.unshift('CONFIG')
@@ -952,7 +963,7 @@ export class Memcached extends EventEmitter {
       // special case for value, it's required that it has a second response!
       // add the token back, and wait for the next response, we might be
       // handling a big ass response here.
-      if (tokenType === 'VALUE' && socket.bufferArray.indexOf('END') === -1) {
+      if (tokenType === 'VALUE' && socket.numEnd === 0) {
         socket.bufferArray.unshift(token)
         return
       } else {
@@ -960,7 +971,11 @@ export class Memcached extends EventEmitter {
         if (TOKEN_TYPES.indexOf(tokenType) > -1) {
           // fetch the response content
           if (tokenType === 'VALUE') {
-            dataSet = Utils.unescapeValue(socket.bufferArray.shift() || '')
+            const nextChunk = socket.bufferArray.shift() || ''
+            if (nextChunk === 'END') {
+              socket.numEnd--
+            }
+            dataSet = Utils.unescapeValue(nextChunk)
           }
 
           resultSet = this._parse(
@@ -1043,7 +1058,7 @@ export class Memcached extends EventEmitter {
 
         // check if we need to remove an empty item from the array, as splitting on /r/n might cause an empty
         // item at the end..
-        if (socket.bufferArray[0] === '') {
+        if (socket.bufferArray.peekFront() === '') {
           socket.bufferArray.shift()
         }
       }
@@ -1062,6 +1077,14 @@ export class Memcached extends EventEmitter {
     switch (tokenType) {
       case 'NOT_STORED': {
         return [CONTINUE, false]
+      }
+
+      // keyword based responses
+      case 'STORED':
+      case 'TOUCHED':
+      case 'DELETED':
+      case 'OK': {
+        return [CONTINUE, true]
       }
 
       case 'ERROR': {
@@ -1175,15 +1198,7 @@ export class Memcached extends EventEmitter {
       // Amazon-specific memcached configuration information, used for node
       // auto-discovery.
       case 'CONFIG': {
-        return [CONTINUE, socket.bufferArray[0]]
-      }
-
-      // keyword based responses
-      case 'STORED':
-      case 'TOUCHED':
-      case 'DELETED':
-      case 'OK': {
-        return [CONTINUE, true]
+        return [CONTINUE, socket.bufferArray.peekFront()]
       }
 
       case 'EXISTS':
