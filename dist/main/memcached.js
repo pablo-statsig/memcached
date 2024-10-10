@@ -12,6 +12,7 @@ const Deque = require("double-ended-queue");
 const HashRing = require("hashring");
 const Jackpot = require("jackpot");
 const ALL_COMMANDS = new RegExp('^(?:' + constants_1.TOKEN_TYPES.join('|') + '|\\d' + ')');
+const ALL_COMMANDS_SET = new Set(constants_1.TOKEN_TYPES);
 const BUFFERED_COMMANDS = new RegExp('^(?:' + constants_1.TOKEN_TYPES.join('|') + ')');
 class MemcachedSocket extends net_1.Socket {
     constructor(id, server, memcached) {
@@ -19,10 +20,11 @@ class MemcachedSocket extends net_1.Socket {
         this.streamID = id;
         this.metaData = new Deque();
         this.responseBuffer = '';
-        this.bufferArray = [];
+        this.bufferArray = new Deque();
         this.tokens = [];
         this.serverAddress = server;
         this.memcached = memcached;
+        this.numEnd = 0;
     }
 }
 class Memcached extends events_1.EventEmitter {
@@ -590,7 +592,12 @@ class Memcached extends events_1.EventEmitter {
                 chunks.splice(chunkLength, 1);
             }
             socket.responseBuffer = '';
-            socket.bufferArray = socket.bufferArray.concat(chunks);
+            for (const chunk of chunks) {
+                if (chunk === 'END') {
+                    socket.numEnd++;
+                }
+            }
+            socket.bufferArray.push(...chunks);
             this._rawDataReceived(socket);
         }
     }
@@ -598,13 +605,16 @@ class Memcached extends events_1.EventEmitter {
         const queue = [];
         const err = [];
         while (socket.bufferArray.length &&
-            ALL_COMMANDS.test(socket.bufferArray[0])) {
+            ALL_COMMANDS_SET.has(socket.bufferArray.peekFront() || '')) {
             const token = socket.bufferArray.shift();
+            if (token === 'END') {
+                socket.numEnd--;
+            }
             const tokenSet = token.split(' ');
             let dataSet = '';
             let resultSet;
-            if (/^\d+$/.test(tokenSet[0])) {
-                if (/(([-.a-zA-Z0-9]+)\|(\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b)\|(\d+))/.test(socket.bufferArray[0])) {
+            if (Number.isInteger(Number(tokenSet[0]))) {
+                if (/(([-.a-zA-Z0-9]+)\|(\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b)\|(\d+))/.test(socket.bufferArray.peekFront() || '')) {
                     tokenSet.unshift('CONFIG');
                 }
                 else {
@@ -612,14 +622,18 @@ class Memcached extends events_1.EventEmitter {
                 }
             }
             const tokenType = tokenSet[0];
-            if (tokenType === 'VALUE' && socket.bufferArray.indexOf('END') === -1) {
+            if (tokenType === 'VALUE' && socket.numEnd === 0) {
                 socket.bufferArray.unshift(token);
                 return;
             }
             else {
                 if (constants_1.TOKEN_TYPES.indexOf(tokenType) > -1) {
                     if (tokenType === 'VALUE') {
-                        dataSet = Utils.unescapeValue(socket.bufferArray.shift() || '');
+                        const nextChunk = socket.bufferArray.shift() || '';
+                        if (nextChunk === 'END') {
+                            socket.numEnd--;
+                        }
+                        dataSet = Utils.unescapeValue(nextChunk);
                     }
                     resultSet = this._parse(tokenType, socket, tokenSet, dataSet, token, err, queue);
                     switch (resultSet.shift()) {
@@ -658,7 +672,7 @@ class Memcached extends events_1.EventEmitter {
                         this._delegateCallback(metaData, new Error(`Unknown response from the memcached server: ${token}`), false, metaData.callback);
                     }
                 }
-                if (socket.bufferArray[0] === '') {
+                if (socket.bufferArray.peekFront() === '') {
                     socket.bufferArray.shift();
                 }
             }
@@ -668,6 +682,12 @@ class Memcached extends events_1.EventEmitter {
         switch (tokenType) {
             case 'NOT_STORED': {
                 return [constants_1.CONTINUE, false];
+            }
+            case 'STORED':
+            case 'TOUCHED':
+            case 'DELETED':
+            case 'OK': {
+                return [constants_1.CONTINUE, true];
             }
             case 'ERROR': {
                 err.push(new Error('Received an ERROR response'));
@@ -752,13 +772,7 @@ class Memcached extends events_1.EventEmitter {
                 return [constants_1.BUFFER, false];
             }
             case 'CONFIG': {
-                return [constants_1.CONTINUE, socket.bufferArray[0]];
-            }
-            case 'STORED':
-            case 'TOUCHED':
-            case 'DELETED':
-            case 'OK': {
-                return [constants_1.CONTINUE, true];
+                return [constants_1.CONTINUE, socket.bufferArray.peekFront()];
             }
             case 'EXISTS':
             case 'NOT_FOUND':
