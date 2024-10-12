@@ -9,11 +9,9 @@ const events_1 = require("events");
 const net_1 = require("net");
 const defaults_1 = require("./defaults");
 const Deque = require("double-ended-queue");
+const genericPool = require("generic-pool");
 const HashRing = require("hashring");
-const Jackpot = require("jackpot");
-const ALL_COMMANDS = new RegExp('^(?:' + constants_1.TOKEN_TYPES.join('|') + '|\\d' + ')');
 const ALL_COMMANDS_SET = new Set(constants_1.TOKEN_TYPES);
-const BUFFERED_COMMANDS = new RegExp('^(?:' + constants_1.TOKEN_TYPES.join('|') + ')');
 class MemcachedSocket extends net_1.Socket {
     constructor(id, server, memcached) {
         super();
@@ -48,7 +46,7 @@ class Memcached extends events_1.EventEmitter {
     }
     end() {
         Object.keys(this._connections).forEach((key) => {
-            this._connections[key].end();
+            this._connections[key].drain();
         });
     }
     touch(key, ttl, callback) {
@@ -496,7 +494,7 @@ class Memcached extends events_1.EventEmitter {
                 },
                 remove: function remove(details) {
                     memcached.emit('remove', details);
-                    memcached._connections[server].end();
+                    memcached._connections[server].drain();
                     if (memcached._config.failOverServers.length > 0) {
                         memcached._hashRing.swap(server, memcached._config.failOverServers.shift());
                     }
@@ -519,7 +517,10 @@ class Memcached extends events_1.EventEmitter {
         }
         else {
             if (server in this._connections) {
-                this._connections[server].pull(callback);
+                this._connections[server]
+                    .acquire()
+                    .then((socket) => callback(null, socket))
+                    .catch((socket) => this._connections[server].destroy(socket));
             }
             else {
                 const serverTokens = Array.isArray(server) && server[0] === '/'
@@ -529,50 +530,41 @@ class Memcached extends events_1.EventEmitter {
                     serverTokens.pop();
                 }
                 let sid = 0;
-                const manager = new Jackpot(this._config.poolSize);
-                manager.retries = this._config.retries;
-                manager.factor = this._config.factor;
-                manager.minTimeout = this._config.minTimeout;
-                manager.maxTimeout = this._config.maxTimeout;
-                manager.randomize = this._config.randomize;
-                manager.setMaxListeners(0);
-                manager.factory(() => {
+                const createFunction = () => {
                     const streamID = sid++;
                     const socket = new MemcachedSocket(streamID, server, this);
-                    const idleTimeout = () => {
-                        manager.remove(socket);
-                    };
-                    const streamError = (e) => {
-                        this._connectionIssue(e.toString(), socket);
-                        manager.remove(socket);
-                    };
                     socket.setTimeout(this._config.timeout);
                     socket.setNoDelay(true);
                     socket.setEncoding('utf8');
                     socket.tokens = [...serverTokens];
                     Utils.fuse(socket, {
-                        close: () => {
-                            manager.remove(socket);
-                        },
                         data: (data) => {
                             this._buffer(socket, data);
-                        },
-                        connect: () => {
-                            socket.setTimeout(socket.memcached._config.idle, idleTimeout);
-                            socket.on('error', streamError);
                         },
                         end: socket.end,
                     });
                     socket.connect.apply(socket, socket.tokens);
-                    return socket;
+                    return Promise.resolve(socket);
+                };
+                const destroyFunction = function (socket) {
+                    socket.destroy();
+                    return Promise.resolve();
+                };
+                const factory = {
+                    create: createFunction,
+                    destroy: destroyFunction,
+                };
+                const serverManager = genericPool.createPool(factory, {
+                    max: this._config.poolSize,
+                    min: 0,
+                    autostart: true,
+                    idleTimeoutMillis: this._config.idle,
                 });
-                manager.on('error', (err) => {
-                    if (this._config.debug) {
-                        console.log('Connection error', err);
-                    }
-                });
-                this._connections[server] = manager;
-                this._connections[server].pull(callback);
+                this._connections[server] = serverManager;
+                serverManager
+                    .acquire()
+                    .then((socket) => callback(null, socket))
+                    .catch((socket) => serverManager.destroy(socket));
             }
         }
     }

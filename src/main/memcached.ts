@@ -6,7 +6,6 @@ import {
   CommandType,
   IMemcachedCommand,
   makeCommand,
-  ValidationItems,
 } from './commands'
 import {
   BUFFER,
@@ -25,7 +24,6 @@ import {
   CallbackFunction,
   ErrorValue,
   IMemcachedConfig,
-  MemcachedOptions,
   ParseResult,
   Servers,
 } from './types'
@@ -35,15 +33,13 @@ import { Socket } from 'net'
 import { DEFAULT_CONFIG } from './defaults'
 
 import Deque = require('double-ended-queue')
+import genericPool = require('generic-pool')
 import HashRing = require('hashring')
-import Jackpot = require('jackpot')
 
-const ALL_COMMANDS = new RegExp('^(?:' + TOKEN_TYPES.join('|') + '|\\d' + ')')
 const ALL_COMMANDS_SET = new Set(TOKEN_TYPES)
-const BUFFERED_COMMANDS = new RegExp('^(?:' + TOKEN_TYPES.join('|') + ')')
 
 interface IConnectionMap {
-  [name: string]: Jackpot<MemcachedSocket>
+  [name: string]: genericPool.Pool<MemcachedSocket>
 }
 
 class MemcachedSocket extends Socket {
@@ -114,7 +110,7 @@ export class Memcached extends EventEmitter {
 
   public end(): void {
     Object.keys(this._connections).forEach((key: string) => {
-      this._connections[key].end()
+      this._connections[key].drain()
     })
   }
 
@@ -767,7 +763,7 @@ export class Memcached extends EventEmitter {
         remove: function remove(details: IIssueLogDetails) {
           // emit event and remove servers
           memcached.emit('remove', details)
-          memcached._connections[server].end()
+          memcached._connections[server].drain()
 
           if (memcached._config.failOverServers.length > 0) {
             memcached._hashRing.swap(
@@ -803,7 +799,10 @@ export class Memcached extends EventEmitter {
     } else {
       // fetch from connection pool
       if (server in this._connections) {
-        this._connections[server].pull(callback)
+        this._connections[server]
+          .acquire()
+          .then((socket: MemcachedSocket) => callback(null, socket))
+          .catch((socket) => this._connections[server].destroy(socket))
       } else {
         // No connection factory created yet, so we must build one
         const serverTokens: Array<string> =
@@ -818,29 +817,9 @@ export class Memcached extends EventEmitter {
 
         let sid: number = 0
 
-        /**
-         * Generate a new connection pool manager.
-         */
-
-        const manager = new Jackpot(this._config.poolSize)
-        manager.retries = this._config.retries
-        manager.factor = this._config.factor
-        manager.minTimeout = this._config.minTimeout
-        manager.maxTimeout = this._config.maxTimeout
-        manager.randomize = this._config.randomize
-
-        manager.setMaxListeners(0)
-
-        manager.factory(() => {
+        const createFunction = (): Promise<MemcachedSocket> => {
           const streamID = sid++
           const socket = new MemcachedSocket(streamID, server, this)
-          const idleTimeout = () => {
-            manager.remove(socket)
-          }
-          const streamError = (e: Error) => {
-            this._connectionIssue(e.toString(), socket)
-            manager.remove(socket)
-          }
 
           // config the Stream
           socket.setTimeout(this._config.timeout)
@@ -850,40 +829,44 @@ export class Memcached extends EventEmitter {
 
           // Add the event listeners
           Utils.fuse(socket, {
-            close: () => {
-              manager.remove(socket)
-            },
             data: (data: Buffer) => {
               this._buffer(socket, data)
-            },
-            connect: () => {
-              // Jackpot handles any pre-connect timeouts by calling back
-              // with the error object.
-              socket.setTimeout(socket.memcached._config.idle, idleTimeout)
-              // Jackpot handles any pre-connect errors, but does not handle errors
-              // once a connection has been made, nor does Jackpot handle releasing
-              // connections if an error occurs post-connect
-              socket.on('error', streamError)
             },
             end: socket.end,
           })
 
           // connect the net.Stream (or net.Socket) [port, hostname]
           socket.connect.apply(socket, socket.tokens)
-          return socket
+          return Promise.resolve(socket)
+        }
+
+        const destroyFunction = function(
+          socket: MemcachedSocket,
+        ): Promise<void> {
+          socket.destroy()
+          return Promise.resolve()
+        }
+
+        const factory: genericPool.Factory<MemcachedSocket> = {
+          create: createFunction,
+          destroy: destroyFunction,
+        }
+
+        const serverManager = genericPool.createPool(factory, {
+          max: this._config.poolSize,
+          min: 0,
+          autostart: true,
+          idleTimeoutMillis: this._config.idle,
         })
 
-        manager.on('error', (err: Error): void => {
-          if (this._config.debug) {
-            console.log('Connection error', err)
-          }
-        })
-
-        this._connections[server] = manager
+        this._connections[server] = serverManager
 
         // now that we have setup our connection factory we can allocate a new
         // connection
-        this._connections[server].pull(callback)
+        serverManager
+          .acquire()
+          .then((socket: MemcachedSocket) => callback(null, socket))
+          .catch((socket) => serverManager.destroy(socket))
       }
     }
   }
