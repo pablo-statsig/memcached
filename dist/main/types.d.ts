@@ -7,10 +7,7 @@ export type Servers = ServerList | IServerPriorityMap | Server;
 export type Key = string | Array<string>;
 export type ErrorValue = Error | Array<Error> | undefined | null;
 export type CallbackFunction<T = any> = (err: ErrorValue, result: T) => void;
-export type ParseResult = [
-    number,
-    any
-];
+export type ParseResult = [number, any];
 export interface IMemcachedConfig {
     maxKeySize: number;
     maxExpiration: number;
