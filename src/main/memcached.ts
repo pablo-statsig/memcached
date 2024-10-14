@@ -801,7 +801,10 @@ export class Memcached extends EventEmitter {
       if (server in this._connections) {
         this._connections[server]
           .acquire()
-          .then((socket: MemcachedSocket) => callback(null, socket))
+          .then((socket: MemcachedSocket) => {
+            callback(null, socket)
+            this._connections[server].release(socket)
+          })
           .catch((socket) => this._connections[server].destroy(socket))
       } else {
         // No connection factory created yet, so we must build one
@@ -865,7 +868,10 @@ export class Memcached extends EventEmitter {
         // connection
         serverManager
           .acquire()
-          .then((socket: MemcachedSocket) => callback(null, socket))
+          .then((socket: MemcachedSocket) => {
+            callback(null, socket)
+            serverManager.release(socket)
+          })
           .catch((socket) => serverManager.destroy(socket))
       }
     }

@@ -519,7 +519,10 @@ class Memcached extends events_1.EventEmitter {
             if (server in this._connections) {
                 this._connections[server]
                     .acquire()
-                    .then((socket) => callback(null, socket))
+                    .then((socket) => {
+                    callback(null, socket);
+                    this._connections[server].release(socket);
+                })
                     .catch((socket) => this._connections[server].destroy(socket));
             }
             else {
@@ -563,7 +566,10 @@ class Memcached extends events_1.EventEmitter {
                 this._connections[server] = serverManager;
                 serverManager
                     .acquire()
-                    .then((socket) => callback(null, socket))
+                    .then((socket) => {
+                    callback(null, socket);
+                    serverManager.release(socket);
+                })
                     .catch((socket) => serverManager.destroy(socket));
             }
         }
