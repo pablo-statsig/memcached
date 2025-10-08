@@ -30,6 +30,7 @@ describe('Memcached', () => {
         const data = Buffer.from('test_value_2');
         yield client.set('test_2', data);
         const rawResult = yield client.get('test_2');
+        chai_1.assert.isDefined(rawResult);
         const actual = rawResult.toString('utf-8');
         chai_1.assert.equal(actual, 'test_value_2');
     }));
@@ -46,6 +47,7 @@ describe('Memcached', () => {
         const client = new main_1.MemcachedClient(servers);
         yield client.set('test_1', [1, 2, 3]);
         const actual = yield client.get('test_1');
+        chai_1.assert.isDefined(actual);
         chai_1.assert.isArray(actual);
         chai_1.assert.equal(actual[0], 1);
         chai_1.assert.equal(actual[1], 2);
@@ -83,11 +85,8 @@ describe('Memcached', () => {
     it('should reject when fetching missing key', () => __awaiter(void 0, void 0, void 0, function* () {
         const servers = ['localhost:11211'];
         const client = new main_1.MemcachedClient(servers);
-        return client.get('missing_key').then((val) => {
-            throw new Error('Should reject for missing key');
-        }, (err) => {
-            chai_1.assert.equal(err.message, 'Given key[missing_key] does not have a value in Memcached');
-        });
+        const result = yield client.get('missing_key');
+        chai_1.assert.isUndefined(result);
     }));
     it('should expire key after ttl', () => __awaiter(void 0, void 0, void 0, function* () {
         const servers = ['localhost:11211'];
@@ -101,11 +100,8 @@ describe('Memcached', () => {
             chai_1.assert.isNumber(valBeforeTTL);
             chai_1.assert.equal(valBeforeTTL, 1);
             setTimeout(() => __awaiter(void 0, void 0, void 0, function* () {
-                yield client.get('test_1').then((val) => {
-                    throw new Error('Should reject for missing key');
-                }, (err) => {
-                    chai_1.assert.equal(err.message, 'Given key[test_1] does not have a value in Memcached');
-                });
+                const result = yield client.get('test_1');
+                chai_1.assert.isUndefined(result);
                 return resolve();
             }), 1000);
         }));
@@ -122,11 +118,8 @@ describe('Memcached', () => {
             chai_1.assert.isNumber(valBeforeTTL);
             chai_1.assert.equal(valBeforeTTL, 1);
             setTimeout(() => __awaiter(void 0, void 0, void 0, function* () {
-                yield client.get('test_1').then((val) => {
-                    throw new Error('Should reject for missing key');
-                }, (err) => {
-                    chai_1.assert.equal(err.message, 'Given key[test_1] does not have a value in Memcached');
-                });
+                const result = yield client.get('test_1');
+                chai_1.assert.isUndefined(result);
                 return resolve();
             }), 1000);
         }));
@@ -254,6 +247,7 @@ describe('Memcached', () => {
         }
         const result = yield client.gets(key, FooCl.fromJSON);
         resultFn = result.value;
+        chai_1.assert.isDefined(resultFn);
         const cas = result.cas;
         if (resultFn !== null) {
             resultFn.setName('user2');

@@ -26,6 +26,19 @@ describe('Memcached GET SET', () => {
             });
         });
     });
+    it('should set a string value', (done) => {
+        const memcached = new main_1.Memcached(common.servers.single);
+        const message = common.alphabet(256);
+        const testnr = ++global.testnumbers;
+        let callbacks = 0;
+        memcached.set(`test:${testnr}`, message, (err1, ok) => {
+            ++callbacks;
+            memcached.end();
+            chai_1.assert.notExists(err1);
+            chai_1.assert.exists(ok);
+            done();
+        });
+    });
     it('set and get an empty string', (done) => {
         const memcached = new main_1.Memcached(common.servers.single);
         const testnr = ++global.testnumbers;

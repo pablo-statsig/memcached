@@ -30,17 +30,23 @@ export class MemcachedClient {
     this.client.addListener(eventName, handler)
   }
 
-  public async get<T>(key: string, decoder?: DecoderFunction<T>): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
+  public async get<T>(
+    key: string,
+    decoder?: DecoderFunction<T>,
+  ): Promise<T | undefined> {
+    return new Promise<T | undefined>((resolve, reject) => {
       this.client.get(key, (err: any, data: any) => {
         if (err !== undefined) {
           reject(new MemcachedOpFailed('get', key, err.message))
-        } else if (data === undefined) {
-          reject(new MemcachedMissingKey(key))
-        } else if (decoder !== undefined) {
-          resolve(decoder(data))
         } else {
-          resolve(data)
+          if (data === undefined) {
+            resolve(undefined)
+            return
+          }
+
+          const resolvedValue =
+            decoder !== undefined ? decoder(data) : (data as T)
+          resolve(resolvedValue as T)
         }
       })
     })
@@ -51,9 +57,16 @@ export class MemcachedClient {
     defaultValue: T,
     decoder?: DecoderFunction<T>,
   ): Promise<T> {
-    return this.get<T>(key, decoder).catch((err: any) => {
-      return defaultValue
-    })
+    return this.get<T>(key, decoder)
+      .then((value) => {
+        if (value === undefined) {
+          return defaultValue
+        }
+        return value
+      })
+      .catch((err: any) => {
+        return defaultValue
+      })
   }
 
   public async getMulti<T>(keys: Array<string>): Promise<any> {

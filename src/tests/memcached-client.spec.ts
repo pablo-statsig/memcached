@@ -24,7 +24,8 @@ describe('Memcached', () => {
         const data = Buffer.from('test_value_2')
         await client.set('test_2', data)
         const rawResult = await client.get<Buffer>('test_2')
-        const actual = rawResult.toString('utf-8')
+        assert.isDefined(rawResult)
+        const actual = rawResult!.toString('utf-8')
         assert.equal(actual, 'test_value_2')
     })
 
@@ -42,10 +43,11 @@ describe('Memcached', () => {
         const client = new MemcachedClient(servers)
         await client.set<Array<number>>('test_1', [1, 2, 3])
         const actual = await client.get<Array<number>>('test_1')
+        assert.isDefined(actual)
         assert.isArray(actual)
-        assert.equal(actual[0], 1)
-        assert.equal(actual[1], 2)
-        assert.equal(actual[2], 3)
+        assert.equal(actual![0], 1)
+        assert.equal(actual![1], 2)
+        assert.equal(actual![2], 3)
     })
 
     it('should set/get flat object', async () => {
@@ -82,11 +84,8 @@ describe('Memcached', () => {
     it('should reject when fetching missing key', async () => {
         const servers: Servers = ['localhost:11211']
         const client = new MemcachedClient(servers)
-        return client.get<string>('missing_key').then((val: any) => {
-            throw new Error('Should reject for missing key')
-        }, (err: any) => {
-            assert.equal(err.message, 'Given key[missing_key] does not have a value in Memcached')
-        })
+        const result = await client.get<string>('missing_key')
+        assert.isUndefined(result)
     })
 
     it('should expire key after ttl', async () => {
@@ -101,12 +100,8 @@ describe('Memcached', () => {
             assert.isNumber(valBeforeTTL)
             assert.equal(valBeforeTTL, 1)
             setTimeout(async () => {
-                await client.get<number>('test_1').then((val: any) => {
-                    throw new Error('Should reject for missing key')
-                }, (err: any) => {
-                    assert.equal(err.message, 'Given key[test_1] does not have a value in Memcached')
-                })
-
+                const result = await client.get<number>('test_1')
+                assert.isUndefined(result)
                 return resolve()
             }, 1000)
         })
@@ -124,11 +119,8 @@ describe('Memcached', () => {
             assert.isNumber(valBeforeTTL)
             assert.equal(valBeforeTTL, 1)
             setTimeout(async () => {
-                await client.get<number>('test_1').then((val: any) => {
-                    throw new Error('Should reject for missing key')
-                }, (err: any) => {
-                    assert.equal(err.message, 'Given key[test_1] does not have a value in Memcached')
-                })
+                const result = await client.get<number>('test_1')
+                assert.isUndefined(result)
 
                 return resolve()
             }, 1000)
@@ -264,20 +256,21 @@ describe('Memcached', () => {
         assert.isDefined(resultFn)
         assert.isNotNull(resultFn)
         if (resultFn !== null) {
-            assert.equal(resultFn.getName(), 'user1')
-            resultFn.setName('user2')
-            assert.equal(resultFn.getName(), 'user2')
+            assert.equal(resultFn!.getName(), 'user1')
+            resultFn!.setName('user2')
+            assert.equal(resultFn!.getName(), 'user2')
         }
 
         const result = await client.gets(key, FooCl.fromJSON)
         resultFn = result.value
+        assert.isDefined(resultFn)
         const cas = result.cas
         if (resultFn !== null) {
-            resultFn.setName('user2')
+            resultFn!.setName('user2')
             await client.encodeAndCas(key, resultFn, cas, FooCl.toJSON)
             resultFn = await client.get(key, FooCl.fromJSON)
             if (resultFn !== null) {
-                assert.equal(resultFn.getName(), 'user2')
+                assert.equal(resultFn!.getName(), 'user2')
             }
         }
     })

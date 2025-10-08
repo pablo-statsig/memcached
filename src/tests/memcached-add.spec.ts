@@ -20,14 +20,13 @@ describe('Memcached ADD', () => {
 
         memcached.set('test:' + testnr, message, 1000, (err1: any, ok: any) => {
             ++callbacks
-
             assert.notExists(err1)
             assert.exists(ok)
 
             memcached.add('test:' + testnr, message, 1000, (err2: any, answer: any) => {
                 ++callbacks
 
-                assert.exists(err2)
+                assert.isFalse(answer)
 
                 memcached.end() // close connections
                 assert.equal(callbacks, 2)

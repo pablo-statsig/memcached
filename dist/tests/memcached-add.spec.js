@@ -16,7 +16,7 @@ describe('Memcached ADD', () => {
             chai_1.assert.exists(ok);
             memcached.add('test:' + testnr, message, 1000, (err2, answer) => {
                 ++callbacks;
-                chai_1.assert.exists(err2);
+                chai_1.assert.isFalse(answer);
                 memcached.end();
                 chai_1.assert.equal(callbacks, 2);
                 done();
