@@ -20,7 +20,7 @@ describe('Memcached ADD', () => {
 
         memcached.set('test:' + testnr, message, 1000, (err1: any, ok: any) => {
             ++callbacks
-            
+
             assert.notExists(err1)
             assert.exists(ok)
 

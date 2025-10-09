@@ -48,7 +48,7 @@ export declare class Memcached extends EventEmitter {
     private _connectionIssue;
     private _connect;
     private _buffer;
-    private isValidCommand;
+    private _isValidCommand;
     private _rawDataReceived;
     private _parse;
     private _parseResults;

@@ -37,7 +37,6 @@ describe('Memcached GET SET', () => {
 
                 memcached.end() // close connections
                 assert.equal(callbacks, 2)
-
                 done()
             })
         })
@@ -68,6 +67,7 @@ describe('Memcached GET SET', () => {
 
             assert.notExists(err1)
             assert.exists(ok)
+
             memcached.get('test:' + testnr, (err2, answer) => {
                 ++callbacks
 
@@ -90,7 +90,7 @@ describe('Memcached GET SET', () => {
      */
     it('set and get a JSON.stringify string', (done) => {
         const memcached = new Memcached(common.servers.single)
-        const message = JSON.stringify({ numbers: common.numbers(256), alphabet: common.alphabet(256), dates: new Date(), arrays: [1, 2, 3, 'foo', 'bar'] })
+        const message = JSON.stringify({numbers: common.numbers(256), alphabet: common.alphabet(256), dates: new Date(), arrays: [1, 2, 3, 'foo', 'bar']})
         const testnr = ++(global as any).testnumbers
         let callbacks = 0
 
@@ -127,23 +127,23 @@ describe('Memcached GET SET', () => {
         let callbacks = 0
 
         memcached.set('test:' + testnr, message, 1000, (err1, ok) => {
+        ++callbacks
+
+        assert.notExists(err1)
+        assert.exists(ok)
+
+        memcached.get('test:' + testnr, (err2, answer) => {
             ++callbacks
 
-            assert.notExists(err1)
-            assert.exists(ok)
+            assert.notExists(err2)
 
-            memcached.get('test:' + testnr, (err2, answer) => {
-                ++callbacks
+            assert.ok(typeof answer === 'string')
+            assert.equal(answer, message)
 
-                assert.notExists(err2)
-
-                assert.ok(typeof answer === 'string')
-                assert.equal(answer, message)
-
-                memcached.end() // close connections
-                assert.equal(callbacks, 2)
-                done()
-            })
+            memcached.end() // close connections
+            assert.equal(callbacks, 2)
+            done()
+        })
         })
     })
 
@@ -629,7 +629,7 @@ describe('Memcached GET SET', () => {
         const testnr2 = '01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789' + ((global as any).testnumbers) + 'a'
         let callbacks = 0
 
-        memcached.getMulti([testnr1, testnr2], (err, ok) => {
+        memcached.getMulti([ testnr1, testnr2 ], (err, ok) => {
             ++callbacks
 
             assert.notExists(err)

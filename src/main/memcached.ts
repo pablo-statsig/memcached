@@ -926,15 +926,15 @@ export class Memcached extends EventEmitter {
       socket.bufferArray.length &&
       this._isValidCommand(socket.bufferArray.peekFront() || '')
     ) {
-        const token: string = socket.bufferArray.shift()!
-        if (token === 'END') {
-        socket.numEnd--
+      const token: string = socket.bufferArray.shift()!
+      if (token === 'END') {
+      socket.numEnd--
       }
-        const tokenSet: Array<string> = token.split(' ')
-        let dataSet: string | undefined = ''
-        let resultSet: any
+      const tokenSet: Array<string> = token.split(' ')
+      let dataSet: string | undefined = ''
+      let resultSet: any
 
-        if (Number.isInteger(Number(tokenSet[0]))) {
+      if (Number.isInteger(Number(tokenSet[0]))) {
         // special case for "config get cluster"
         // Amazon-specific memcached configuration information, see aws
         // documentation regarding adding auto-discovery to your client library.
@@ -952,12 +952,12 @@ export class Memcached extends EventEmitter {
         }
       }
 
-        const tokenType: string = tokenSet[0]
+      const tokenType: string = tokenSet[0]
 
       // special case for value, it's required that it has a second response!
       // add the token back, and wait for the next response, we might be
       // handling a big ass response here.
-        if (tokenType === 'VALUE' && socket.numEnd === 0) {
+      if (tokenType === 'VALUE' && socket.numEnd === 0) {
         socket.bufferArray.unshift(token)
         return
       } else {
