@@ -47,14 +47,13 @@ class MemcachedClient {
                     if (err !== undefined) {
                         reject(new errors_1.MemcachedOpFailed('get', key, err.message));
                     }
-                    else if (data === undefined) {
-                        reject(new errors_1.MemcachedMissingKey(key));
-                    }
-                    else if (decoder !== undefined) {
-                        resolve(decoder(data));
-                    }
                     else {
-                        resolve(data);
+                        if (data === undefined) {
+                            resolve(undefined);
+                            return;
+                        }
+                        const resolvedValue = decoder !== undefined ? decoder(data) : data;
+                        resolve(resolvedValue);
                     }
                 });
             });
@@ -62,7 +61,14 @@ class MemcachedClient {
     }
     getWithDefault(key, defaultValue, decoder) {
         return __awaiter(this, void 0, void 0, function* () {
-            return this.get(key, decoder).catch((err) => {
+            return this.get(key, decoder)
+                .then((value) => {
+                if (value === undefined) {
+                    return defaultValue;
+                }
+                return value;
+            })
+                .catch((err) => {
                 return defaultValue;
             });
         });

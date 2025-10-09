@@ -42,6 +42,21 @@ describe('Memcached GET SET', () => {
         })
     })
 
+    it('should set a string value', (done) => {
+        const memcached = new Memcached(common.servers.single)
+        const message = common.alphabet(256)
+        const testnr = ++(global as any).testnumbers
+        let callbacks = 0
+
+        memcached.set(`test:${testnr}`, message, (err1, ok) => {
+            ++callbacks
+            memcached.end()
+            assert.notExists(err1)
+            assert.exists(ok)
+            done()
+        })
+    })
+
     it('set and get an empty string', (done) => {
         const memcached = new Memcached(common.servers.single)
         const testnr = ++(global as any).testnumbers
@@ -227,16 +242,16 @@ describe('Memcached GET SET', () => {
     it('set and get a array', (done) => {
         const memcached = new Memcached(common.servers.single)
         const message = [{
-                numbers: common.numbers(256),
-                alphabet: common.alphabet(256),
-                dates: new Date(),
-                arrays: [1, 2, 3, 'foo', 'bar'],
-            }, {
-                numbers: common.numbers(256),
-                alphabet: common.alphabet(256),
-                dates: new Date(),
-                arrays: [1, 2, 3, 'foo', 'bar'],
-            }]
+            numbers: common.numbers(256),
+            alphabet: common.alphabet(256),
+            dates: new Date(),
+            arrays: [1, 2, 3, 'foo', 'bar'],
+        }, {
+            numbers: common.numbers(256),
+            alphabet: common.alphabet(256),
+            dates: new Date(),
+            arrays: [1, 2, 3, 'foo', 'bar'],
+        }]
         const testnr = ++(global as any).testnumbers
         let callbacks = 0
 

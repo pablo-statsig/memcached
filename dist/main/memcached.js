@@ -599,11 +599,14 @@ class Memcached extends events_1.EventEmitter {
             this._rawDataReceived(socket);
         }
     }
+    _isValidCommand(bufferData) {
+        return ALL_COMMANDS_SET.has(bufferData) || ALL_COMMANDS_SET.has(bufferData.slice(0, 5));
+    }
     _rawDataReceived(socket) {
         const queue = [];
         const err = [];
         while (socket.bufferArray.length &&
-            ALL_COMMANDS_SET.has(socket.bufferArray.peekFront() || '')) {
+            this._isValidCommand(socket.bufferArray.peekFront() || '')) {
             const token = socket.bufferArray.shift();
             if (token === 'END') {
                 socket.numEnd--;

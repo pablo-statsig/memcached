@@ -1,0 +1,9 @@
+{
+    "reporter": "spec",
+    "exit": true,
+    "fullTrace": true,
+    "timeout": 10000,
+    "spec": [
+        "dist/tests/**/*.spec.js"
+    ]
+}

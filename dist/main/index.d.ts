@@ -6,7 +6,7 @@ export declare class MemcachedClient {
     private defaultTTL;
     constructor(servers: Servers, options?: Partial<IMemcachedConfig>);
     addListener(eventName: eventNames, handler: (...args: Array<any>) => void): void;
-    get<T>(key: string, decoder?: DecoderFunction<T>): Promise<T>;
+    get<T>(key: string, decoder?: DecoderFunction<T>): Promise<T | undefined>;
     getWithDefault<T>(key: string, defaultValue: T, decoder?: DecoderFunction<T>): Promise<T>;
     getMulti<T>(keys: Array<string>): Promise<any>;
     gets<T>(key: string, decoder?: DecoderFunction<T>): Promise<ICasResult>;

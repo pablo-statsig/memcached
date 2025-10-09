@@ -913,17 +913,22 @@ export class Memcached extends EventEmitter {
     }
   }
 
+  private _isValidCommand(bufferData: string): boolean {
+    // special case check for commands that start with 'VALUE'
+    return ALL_COMMANDS_SET.has(bufferData) || ALL_COMMANDS_SET.has(bufferData.slice(0, 5))
+  }
+
   private _rawDataReceived(socket: MemcachedSocket): void {
     const queue: Array<any> = []
     const err: Array<Error> = []
 
     while (
       socket.bufferArray.length &&
-      ALL_COMMANDS_SET.has(socket.bufferArray.peekFront() || '')
+      this._isValidCommand(socket.bufferArray.peekFront() || '')
     ) {
       const token: string = socket.bufferArray.shift()!
       if (token === 'END') {
-        socket.numEnd--
+      socket.numEnd--
       }
       const tokenSet: Array<string> = token.split(' ')
       let dataSet: string | undefined = ''

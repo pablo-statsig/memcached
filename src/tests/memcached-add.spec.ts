@@ -27,7 +27,7 @@ describe('Memcached ADD', () => {
             memcached.add('test:' + testnr, message, 1000, (err2: any, answer: any) => {
                 ++callbacks
 
-                assert.exists(err2)
+                assert.isFalse(answer)
 
                 memcached.end() // close connections
                 assert.equal(callbacks, 2)
