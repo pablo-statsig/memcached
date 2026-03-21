@@ -16,6 +16,7 @@ export interface IMemcachedConfig {
     maxQueueSize: number;
     algorithm: string;
     compatibility: string;
+    hashRingVnodeCount: number;
     poolSize: number;
     retries: number;
     factor: number;

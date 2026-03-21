@@ -29,7 +29,9 @@ class Memcached extends events_1.EventEmitter {
     constructor(servers, options = {}) {
         super();
         this._config = Utils.merge(Memcached.config, options);
-        this._hashRing = new HashRing(servers);
+        this._hashRing = new HashRing(servers, this._config.algorithm, {
+            'vnode count': this._config.hashRingVnodeCount,
+        });
         this._activeQueries = 0;
         this._servers = [];
         this._issues = {};
