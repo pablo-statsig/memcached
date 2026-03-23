@@ -112,6 +112,7 @@ Memcached server uses the same properties:
 * `maxValue`: *1048576*, the maximum size of a value.
 * `poolSize`: *10*, the maximum size of the connection pool.
 * `algorithm`: *md5*, the hashing algorithm used to generate the `hashRing` values.
+* `hashRingVnodeCount`: *160*, the number of virtual nodes to assign per server in the consistent hash ring.
 * `reconnect`: *18000000*, the time between reconnection attempts (in milliseconds).
 * `timeout`: *5000*, the time after which Memcached sends a connection timeout (in milliseconds).
 * `retries`: *5*, the number of socket allocation retries per request.

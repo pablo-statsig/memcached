@@ -93,7 +93,9 @@ export class Memcached extends EventEmitter {
   constructor(servers: Servers, options: Partial<IMemcachedConfig> = {}) {
     super()
     this._config = Utils.merge(Memcached.config, options)
-    this._hashRing = new HashRing(servers)
+    this._hashRing = new HashRing(servers, this._config.algorithm, {
+      'vnode count': this._config.hashRingVnodeCount,
+    })
     this._activeQueries = 0
     this._servers = []
     this._issues = {}

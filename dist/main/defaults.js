@@ -9,6 +9,7 @@ exports.DEFAULT_CONFIG = {
     maxQueueSize: -1,
     algorithm: 'md5',
     compatibility: 'ketama',
+    hashRingVnodeCount: 160,
     poolSize: 10,
     retries: 5,
     factor: 3,

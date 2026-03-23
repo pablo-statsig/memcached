@@ -8,6 +8,7 @@ export const DEFAULT_CONFIG: IMemcachedConfig = {
     maxQueueSize: -1,
     algorithm: 'md5',        // hashing algorithm that is used for key mapping
     compatibility: 'ketama', // hashring compatibility
+    hashRingVnodeCount: 160, // denser ring for more even distribution across large clusters
 
     poolSize: 10,            // maximal parallel connections
     retries: 5,              // Connection pool retries to pull connection from pool
